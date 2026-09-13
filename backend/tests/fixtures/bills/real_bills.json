@@ -1,0 +1,77 @@
+{
+  "_README": [
+    "PRD 8.1: 'Computed bill matches 5 real TANGEDCO bills TO THE RUPEE -- most",
+    "falsifiable component, must be exact.'",
+    "",
+    "tests/test_tariff_golden.py FAILS until this file holds 5 real bills.",
+    "That failure is deliberate. It is the forcing function: the tariff engine is",
+    "the highest value-per-hour item in the build (PRD 7 item 3) and it is also",
+    "the only component a judge can check with a phone and a paper bill.",
+    "",
+    "HOW TO FILL THIS IN",
+    "  1. Get 5 real TANGEDCO domestic bills. Different consumption levels --",
+    "     include at least one under 100 units (the free-slab case, demo beat 2)",
+    "     and one over 400 (the top-slab case).",
+    "  2. For each, record units consumed and the energy charge in rupees.",
+    "  3. STRIP PII BEFORE COMMITTING (NFR-1). No name, no address, no CSN.",
+    "     Use a made-up label. Never commit a photo of a bill.",
+    "  4. Set billing_period_months to what the bill actually covers. TN bills",
+    "     BIMONTHLY -- see PRD 8.2. If your bills are bimonthly you cannot use",
+    "     the monthly-equivalent schedule directly; that open question has to be",
+    "     resolved first, and resolving it is what these bills are for.",
+    "",
+    "FIELD NOTES",
+    "  units_kwh        -- consumption billed in the period",
+    "  energy_charge_inr-- the SLAB charge only. Exclude fixed charges, meter",
+    "                      rent, electricity duty and any subsidy line. The",
+    "                      engine models slabs, so compare against slabs.",
+    "  expect_exact     -- true once you have confirmed the number is the slab",
+    "                      charge and nothing else. Bills that are still",
+    "                      ambiguous stay false and are reported, not asserted."
+  ],
+
+  "schedule_version": "tn-domestic-2025-07-01",
+
+  "bills": [
+    {
+      "label": "TODO-1-free-slab",
+      "units_kwh": null,
+      "energy_charge_inr": null,
+      "billing_period_months": null,
+      "expect_exact": false,
+      "note": "Target: under 100 units. This is the honest-zero case."
+    },
+    {
+      "label": "TODO-2-low",
+      "units_kwh": null,
+      "energy_charge_inr": null,
+      "billing_period_months": null,
+      "expect_exact": false,
+      "note": "Target: 101-200 units."
+    },
+    {
+      "label": "TODO-3-mid",
+      "units_kwh": null,
+      "energy_charge_inr": null,
+      "billing_period_months": null,
+      "expect_exact": false,
+      "note": "Target: 201-400 units."
+    },
+    {
+      "label": "TODO-4-top-slab",
+      "units_kwh": null,
+      "energy_charge_inr": null,
+      "billing_period_months": null,
+      "expect_exact": false,
+      "note": "Target: over 400 units. This is the demo-beat-2 neighbour."
+    },
+    {
+      "label": "TODO-5-any",
+      "units_kwh": null,
+      "energy_charge_inr": null,
+      "billing_period_months": null,
+      "expect_exact": false,
+      "note": "Any level. Five is the acceptance count in PRD 8.1."
+    }
+  ]
+}

@@ -1,0 +1,1985 @@
+{
+  "_generated_by": "backend/scripts/build_demo_fallback.py",
+  "_warning": "Generated. Do not edit by hand -- regenerate instead.",
+  "_roofs_from": "pvmaps.pipeline.seed.PILOT_ROOFS (same as the database seeder)",
+  "_grid_disclosure": "Grid connection is not verified. Official TNPDCL feasibility is required before installation.",
+  "addresses": [
+    {
+      "id": "addr-demo-1",
+      "display_name": "12 Katpadi Road, Vellore (demo)",
+      "building_id": "bldg-demo-1",
+      "lat": 12.9202,
+      "lon": 79.1325
+    },
+    {
+      "id": "addr-demo-2",
+      "display_name": "4 Gandhi Nagar, Vellore (demo, free-slab household)",
+      "building_id": "bldg-demo-2",
+      "lat": 12.9241,
+      "lon": 79.1358
+    },
+    {
+      "id": "addr-demo-3",
+      "display_name": "VIT Vellore, Technology Tower (demo, physical potential only)",
+      "building_id": "bldg-demo-3",
+      "lat": 12.9692,
+      "lon": 79.1559
+    },
+    {
+      "id": "addr-demo-4",
+      "display_name": "9 Thorapadi Main Road, Vellore (demo, daytime-heavy on a small roof)",
+      "building_id": "bldg-demo-4",
+      "lat": 12.9021,
+      "lon": 79.141
+    },
+    {
+      "id": "addr-demo-5",
+      "display_name": "7 Sathuvachari 5th Cross, Vellore (demo, home all day, low units)",
+      "building_id": "bldg-demo-5",
+      "lat": 12.944,
+      "lon": 79.1515
+    }
+  ],
+  "buildings": {
+    "bldg-demo-1": {
+      "id": "bldg-demo-1",
+      "geojson": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.1324498,
+              12.920151
+            ],
+            [
+              79.1325502,
+              12.920151
+            ],
+            [
+              79.1325502,
+              12.920249
+            ],
+            [
+              79.1324498,
+              12.920249
+            ],
+            [
+              79.1324498,
+              12.920151
+            ]
+          ]
+        ]
+      },
+      "obstruction_geojson": null,
+      "roof_area_m2": 118.0,
+      "usable_area_m2": 84.0,
+      "roof_max_kwp": 7.0,
+      "roof_max_kwp_band": {
+        "lo": 7.0,
+        "hi": 9.33
+      },
+      "typology": "residential",
+      "confidence": 0.82,
+      "annual_yield_kwh_per_kwp": {
+        "value": 1550.0,
+        "lo": 1500.0,
+        "hi": 1600.0,
+        "source": "inferred",
+        "confidence": 0.5,
+        "as_of": "2025-07-01",
+        "note": "Regional band for Inland Tamil Nadu (Vellore pilot) (tn-inland-2025). This roof has not been analysed individually."
+      },
+      "yield_source": "REGIONAL_FALLBACK",
+      "analysis_version": null
+    },
+    "bldg-demo-2": {
+      "id": "bldg-demo-2",
+      "geojson": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.1357548,
+              12.924056
+            ],
+            [
+              79.1358452,
+              12.924056
+            ],
+            [
+              79.1358452,
+              12.924144
+            ],
+            [
+              79.1357548,
+              12.924144
+            ],
+            [
+              79.1357548,
+              12.924056
+            ]
+          ]
+        ]
+      },
+      "obstruction_geojson": null,
+      "roof_area_m2": 96.0,
+      "usable_area_m2": 71.0,
+      "roof_max_kwp": 5.91,
+      "roof_max_kwp_band": {
+        "lo": 5.92,
+        "hi": 7.89
+      },
+      "typology": "residential",
+      "confidence": 0.79,
+      "annual_yield_kwh_per_kwp": {
+        "value": 1550.0,
+        "lo": 1500.0,
+        "hi": 1600.0,
+        "source": "inferred",
+        "confidence": 0.5,
+        "as_of": "2025-07-01",
+        "note": "Regional band for Inland Tamil Nadu (Vellore pilot) (tn-inland-2025). This roof has not been analysed individually."
+      },
+      "yield_source": "REGIONAL_FALLBACK",
+      "analysis_version": null
+    },
+    "bldg-demo-3": {
+      "id": "bldg-demo-3",
+      "geojson": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.1556972,
+              12.9690024
+            ],
+            [
+              79.1561028,
+              12.9690024
+            ],
+            [
+              79.1561028,
+              12.9693976
+            ],
+            [
+              79.1556972,
+              12.9693976
+            ],
+            [
+              79.1556972,
+              12.9690024
+            ]
+          ]
+        ]
+      },
+      "obstruction_geojson": null,
+      "roof_area_m2": 1940.0,
+      "usable_area_m2": 1310.0,
+      "roof_max_kwp": 109.16,
+      "roof_max_kwp_band": {
+        "lo": 109.17,
+        "hi": 145.56
+      },
+      "typology": "institutional",
+      "confidence": 0.68,
+      "annual_yield_kwh_per_kwp": {
+        "value": 1550.0,
+        "lo": 1500.0,
+        "hi": 1600.0,
+        "source": "inferred",
+        "confidence": 0.5,
+        "as_of": "2025-07-01",
+        "note": "Regional band for Inland Tamil Nadu (Vellore pilot) (tn-inland-2025). This roof has not been analysed individually."
+      },
+      "yield_source": "REGIONAL_FALLBACK",
+      "analysis_version": null
+    },
+    "bldg-demo-4": {
+      "id": "bldg-demo-4",
+      "geojson": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.1409636,
+              12.9020645
+            ],
+            [
+              79.1410364,
+              12.9020645
+            ],
+            [
+              79.1410364,
+              12.9021355
+            ],
+            [
+              79.1409636,
+              12.9021355
+            ],
+            [
+              79.1409636,
+              12.9020645
+            ]
+          ]
+        ]
+      },
+      "obstruction_geojson": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    79.14101382367326,
+                    12.902113474667626
+                  ],
+                  [
+                    79.14102672576979,
+                    12.902113474667626
+                  ],
+                  [
+                    79.14102672576979,
+                    12.902126051024077
+                  ],
+                  [
+                    79.14101382367326,
+                    12.902126051024077
+                  ],
+                  [
+                    79.14101382367326,
+                    12.902113474667626
+                  ]
+                ]
+              ]
+            },
+            "properties": {
+              "area_m2": 1.96,
+              "label": "water tank"
+            }
+          },
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    79.1409714310748,
+                    12.902075745598276
+                  ],
+                  [
+                    79.14099170579516,
+                    12.902075745598276
+                  ],
+                  [
+                    79.14099170579516,
+                    12.902095508444125
+                  ],
+                  [
+                    79.1409714310748,
+                    12.902095508444125
+                  ],
+                  [
+                    79.1409714310748,
+                    12.902075745598276
+                  ]
+                ]
+              ]
+            },
+            "properties": {
+              "area_m2": 4.84,
+              "label": "stairhead"
+            }
+          }
+        ]
+      },
+      "roof_area_m2": 62.0,
+      "usable_area_m2": 34.0,
+      "roof_max_kwp": 2.83,
+      "roof_max_kwp_band": {
+        "lo": 2.83,
+        "hi": 3.78
+      },
+      "typology": "residential",
+      "confidence": 0.74,
+      "annual_yield_kwh_per_kwp": {
+        "value": 1550.0,
+        "lo": 1500.0,
+        "hi": 1600.0,
+        "source": "inferred",
+        "confidence": 0.5,
+        "as_of": "2025-07-01",
+        "note": "Regional band for Inland Tamil Nadu (Vellore pilot) (tn-inland-2025). This roof has not been analysed individually."
+      },
+      "yield_source": "REGIONAL_FALLBACK",
+      "analysis_version": null
+    },
+    "bldg-demo-5": {
+      "id": "bldg-demo-5",
+      "geojson": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.151453,
+              12.9439542
+            ],
+            [
+              79.151547,
+              12.9439542
+            ],
+            [
+              79.151547,
+              12.9440458
+            ],
+            [
+              79.151453,
+              12.9440458
+            ],
+            [
+              79.151453,
+              12.9439542
+            ]
+          ]
+        ]
+      },
+      "obstruction_geojson": null,
+      "roof_area_m2": 104.0,
+      "usable_area_m2": 76.0,
+      "roof_max_kwp": 6.33,
+      "roof_max_kwp_band": {
+        "lo": 6.33,
+        "hi": 8.44
+      },
+      "typology": "residential",
+      "confidence": 0.81,
+      "annual_yield_kwh_per_kwp": {
+        "value": 1550.0,
+        "lo": 1500.0,
+        "hi": 1600.0,
+        "source": "inferred",
+        "confidence": 0.5,
+        "as_of": "2025-07-01",
+        "note": "Regional band for Inland Tamil Nadu (Vellore pilot) (tn-inland-2025). This roof has not been analysed individually."
+      },
+      "yield_source": "REGIONAL_FALLBACK",
+      "analysis_version": null
+    }
+  },
+  "recommendations": {
+    "bldg-demo-1": {
+      "run_id": null,
+      "verdict": "RECOMMENDED",
+      "recommended": {
+        "kwp": 1.5,
+        "annual_generation": {
+          "lo": 2250.0,
+          "hi": 2400.0
+        },
+        "self_consumed_kwh": {
+          "lo": 141.25,
+          "hi": 200.0
+        },
+        "exported_kwh": {
+          "lo": 0.0,
+          "hi": 58.75
+        },
+        "annual_self_consumed_kwh": {
+          "lo": 1695.0,
+          "hi": 2400.0
+        },
+        "annual_exported_kwh": {
+          "lo": 0.0,
+          "hi": 705.0
+        },
+        "annual_bill_savings": {
+          "lo": 19577.25,
+          "hi": 26397.0
+        },
+        "annual_export_credit": {
+          "lo": 0.0,
+          "hi": 0.0
+        },
+        "annual_om_cost": {
+          "lo": 900.0,
+          "hi": 1800.0
+        },
+        "annual_net_benefit": {
+          "lo": 17777.25,
+          "hi": 25497.0
+        },
+        "gross_capex": {
+          "lo": 67500.0,
+          "hi": 90000.0
+        },
+        "subsidy": 45000.0,
+        "net_capex": {
+          "lo": 22500.0,
+          "hi": 45000.0
+        },
+        "npv": {
+          "lo": 119191.03,
+          "hi": 289129.78
+        },
+        "payback_years": {
+          "lo": 0.9,
+          "hi": 2.5
+        },
+        "effective_rate": {
+          "lo": 8.1572,
+          "hi": 11.732
+        }
+      },
+      "curve": [
+        {
+          "kwp": 0.5,
+          "annual_generation": {
+            "lo": 750.0,
+            "hi": 800.0
+          },
+          "self_consumed_kwh": {
+            "lo": 62.5,
+            "hi": 66.67
+          },
+          "exported_kwh": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 750.0,
+            "hi": 800.0
+          },
+          "annual_exported_kwh": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_bill_savings": {
+            "lo": 8662.5,
+            "hi": 9240.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 300.0,
+            "hi": 600.0
+          },
+          "annual_net_benefit": {
+            "lo": 8062.5,
+            "hi": 8940.0
+          },
+          "gross_capex": {
+            "lo": 22500.0,
+            "hi": 30000.0
+          },
+          "subsidy": 15000.0,
+          "net_capex": {
+            "lo": 7500.0,
+            "hi": 15000.0
+          },
+          "npv": {
+            "lo": 59465.41,
+            "hi": 101766.59
+          },
+          "payback_years": {
+            "lo": 0.8,
+            "hi": 1.9
+          },
+          "effective_rate": {
+            "lo": 10.8281,
+            "hi": 12.32
+          }
+        },
+        {
+          "kwp": 1.0,
+          "annual_generation": {
+            "lo": 1500.0,
+            "hi": 1600.0
+          },
+          "self_consumed_kwh": {
+            "lo": 125.0,
+            "hi": 133.33
+          },
+          "exported_kwh": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 1500.0,
+            "hi": 1600.0
+          },
+          "annual_exported_kwh": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_bill_savings": {
+            "lo": 17325.0,
+            "hi": 18480.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 600.0,
+            "hi": 1200.0
+          },
+          "annual_net_benefit": {
+            "lo": 16125.0,
+            "hi": 17880.0
+          },
+          "gross_capex": {
+            "lo": 45000.0,
+            "hi": 60000.0
+          },
+          "subsidy": 30000.0,
+          "net_capex": {
+            "lo": 15000.0,
+            "hi": 30000.0
+          },
+          "npv": {
+            "lo": 118930.81,
+            "hi": 203533.18
+          },
+          "payback_years": {
+            "lo": 0.8,
+            "hi": 1.9
+          },
+          "effective_rate": {
+            "lo": 10.8281,
+            "hi": 12.32
+          }
+        },
+        {
+          "kwp": 1.5,
+          "annual_generation": {
+            "lo": 2250.0,
+            "hi": 2400.0
+          },
+          "self_consumed_kwh": {
+            "lo": 141.25,
+            "hi": 200.0
+          },
+          "exported_kwh": {
+            "lo": 0.0,
+            "hi": 58.75
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 1695.0,
+            "hi": 2400.0
+          },
+          "annual_exported_kwh": {
+            "lo": 0.0,
+            "hi": 705.0
+          },
+          "annual_bill_savings": {
+            "lo": 19577.25,
+            "hi": 26397.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 900.0,
+            "hi": 1800.0
+          },
+          "annual_net_benefit": {
+            "lo": 17777.25,
+            "hi": 25497.0
+          },
+          "gross_capex": {
+            "lo": 67500.0,
+            "hi": 90000.0
+          },
+          "subsidy": 45000.0,
+          "net_capex": {
+            "lo": 22500.0,
+            "hi": 45000.0
+          },
+          "npv": {
+            "lo": 119191.03,
+            "hi": 289129.78
+          },
+          "payback_years": {
+            "lo": 0.9,
+            "hi": 2.5
+          },
+          "effective_rate": {
+            "lo": 8.1572,
+            "hi": 11.732
+          }
+        },
+        {
+          "kwp": 2.0,
+          "annual_generation": {
+            "lo": 3000.0,
+            "hi": 3200.0
+          },
+          "self_consumed_kwh": {
+            "lo": 141.25,
+            "hi": 254.25
+          },
+          "exported_kwh": {
+            "lo": 0.0,
+            "hi": 125.42
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 1695.0,
+            "hi": 3051.0
+          },
+          "annual_exported_kwh": {
+            "lo": 0.0,
+            "hi": 1505.0
+          },
+          "annual_bill_savings": {
+            "lo": 19577.25,
+            "hi": 31865.4
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 1200.0,
+            "hi": 2400.0
+          },
+          "annual_net_benefit": {
+            "lo": 17177.25,
+            "hi": 30665.4
+          },
+          "gross_capex": {
+            "lo": 90000.0,
+            "hi": 120000.0
+          },
+          "subsidy": 60000.0,
+          "net_capex": {
+            "lo": 30000.0,
+            "hi": 60000.0
+          },
+          "npv": {
+            "lo": 98649.41,
+            "hi": 344799.07
+          },
+          "payback_years": {
+            "lo": 1.0,
+            "hi": 3.5
+          },
+          "effective_rate": {
+            "lo": 6.1179,
+            "hi": 10.6218
+          }
+        },
+        {
+          "kwp": 2.5,
+          "annual_generation": {
+            "lo": 3750.0,
+            "hi": 4000.0
+          },
+          "self_consumed_kwh": {
+            "lo": 141.25,
+            "hi": 254.25
+          },
+          "exported_kwh": {
+            "lo": 58.25,
+            "hi": 192.08
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 1695.0,
+            "hi": 3051.0
+          },
+          "annual_exported_kwh": {
+            "lo": 699.0,
+            "hi": 2305.0
+          },
+          "annual_bill_savings": {
+            "lo": 19577.25,
+            "hi": 31865.4
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 1500.0,
+            "hi": 3000.0
+          },
+          "annual_net_benefit": {
+            "lo": 16577.25,
+            "hi": 30365.4
+          },
+          "gross_capex": {
+            "lo": 112500.0,
+            "hi": 150000.0
+          },
+          "subsidy": 69000.0,
+          "net_capex": {
+            "lo": 43500.0,
+            "hi": 81000.0
+          },
+          "npv": {
+            "lo": 72107.8,
+            "hi": 327632.41
+          },
+          "payback_years": {
+            "lo": 1.4,
+            "hi": 4.9
+          },
+          "effective_rate": {
+            "lo": 4.8943,
+            "hi": 8.4974
+          }
+        },
+        {
+          "kwp": 3.0,
+          "annual_generation": {
+            "lo": 4500.0,
+            "hi": 4800.0
+          },
+          "self_consumed_kwh": {
+            "lo": 141.25,
+            "hi": 254.25
+          },
+          "exported_kwh": {
+            "lo": 120.75,
+            "hi": 258.75
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 1695.0,
+            "hi": 3051.0
+          },
+          "annual_exported_kwh": {
+            "lo": 1449.0,
+            "hi": 3105.0
+          },
+          "annual_bill_savings": {
+            "lo": 19577.25,
+            "hi": 31865.4
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 1800.0,
+            "hi": 3600.0
+          },
+          "annual_net_benefit": {
+            "lo": 15977.25,
+            "hi": 30065.4
+          },
+          "gross_capex": {
+            "lo": 135000.0,
+            "hi": 180000.0
+          },
+          "subsidy": 78000.0,
+          "net_capex": {
+            "lo": 57000.0,
+            "hi": 102000.0
+          },
+          "npv": {
+            "lo": 45566.19,
+            "hi": 310465.74
+          },
+          "payback_years": {
+            "lo": 1.9,
+            "hi": 6.4
+          },
+          "effective_rate": {
+            "lo": 4.0786,
+            "hi": 7.0812
+          }
+        }
+      ],
+      "roof_max_kwp": 7.0,
+      "sanctioned_load_max_kwp": 3.0,
+      "feasible_max_kwp": 3.0,
+      "binding_constraint": "SANCTIONED_LOAD",
+      "is_economically_capped": true,
+      "usable_area_m2": 84.0,
+      "usable_area_source": "SEGMENTED",
+      "tariff_version": "tn-domestic-2025-07-01",
+      "assumptions_version": "tn-inland-2025",
+      "subsidy_version": "pm-surya-ghar-2024",
+      "assumptions_verified": false,
+      "yield_source": "REGIONAL_FALLBACK",
+      "grid_feasibility": "NOT_VERIFIED",
+      "grid_disclosure": "Grid connection is not verified. Official TNPDCL feasibility is required before installation."
+    },
+    "bldg-demo-2": {
+      "run_id": null,
+      "verdict": "NOT_ECONOMIC",
+      "recommended": null,
+      "curve": [
+        {
+          "kwp": 0.5,
+          "annual_generation": {
+            "lo": 750.0,
+            "hi": 800.0
+          },
+          "self_consumed_kwh": {
+            "lo": 9.5,
+            "hi": 23.75
+          },
+          "exported_kwh": {
+            "lo": 38.75,
+            "hi": 57.17
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 114.0,
+            "hi": 285.0
+          },
+          "annual_exported_kwh": {
+            "lo": 465.0,
+            "hi": 686.0
+          },
+          "annual_bill_savings": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 300.0,
+            "hi": 600.0
+          },
+          "annual_net_benefit": {
+            "lo": -600.0,
+            "hi": -300.0
+          },
+          "gross_capex": {
+            "lo": 22500.0,
+            "hi": 30000.0
+          },
+          "subsidy": 15000.0,
+          "net_capex": {
+            "lo": 7500.0,
+            "hi": 15000.0
+          },
+          "npv": {
+            "lo": -20541.61,
+            "hi": -11166.66
+          },
+          "payback_years": null,
+          "effective_rate": {
+            "lo": 0.0,
+            "hi": 0.0
+          }
+        },
+        {
+          "kwp": 1.0,
+          "annual_generation": {
+            "lo": 1500.0,
+            "hi": 1600.0
+          },
+          "self_consumed_kwh": {
+            "lo": 9.5,
+            "hi": 23.75
+          },
+          "exported_kwh": {
+            "lo": 101.25,
+            "hi": 123.83
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 114.0,
+            "hi": 285.0
+          },
+          "annual_exported_kwh": {
+            "lo": 1215.0,
+            "hi": 1486.0
+          },
+          "annual_bill_savings": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 600.0,
+            "hi": 1200.0
+          },
+          "annual_net_benefit": {
+            "lo": -1200.0,
+            "hi": -600.0
+          },
+          "gross_capex": {
+            "lo": 45000.0,
+            "hi": 60000.0
+          },
+          "subsidy": 30000.0,
+          "net_capex": {
+            "lo": 15000.0,
+            "hi": 30000.0
+          },
+          "npv": {
+            "lo": -41083.22,
+            "hi": -22333.33
+          },
+          "payback_years": null,
+          "effective_rate": {
+            "lo": 0.0,
+            "hi": 0.0
+          }
+        },
+        {
+          "kwp": 1.5,
+          "annual_generation": {
+            "lo": 2250.0,
+            "hi": 2400.0
+          },
+          "self_consumed_kwh": {
+            "lo": 9.5,
+            "hi": 23.75
+          },
+          "exported_kwh": {
+            "lo": 163.75,
+            "hi": 190.5
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 114.0,
+            "hi": 285.0
+          },
+          "annual_exported_kwh": {
+            "lo": 1965.0,
+            "hi": 2286.0
+          },
+          "annual_bill_savings": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 900.0,
+            "hi": 1800.0
+          },
+          "annual_net_benefit": {
+            "lo": -1800.0,
+            "hi": -900.0
+          },
+          "gross_capex": {
+            "lo": 67500.0,
+            "hi": 90000.0
+          },
+          "subsidy": 45000.0,
+          "net_capex": {
+            "lo": 22500.0,
+            "hi": 45000.0
+          },
+          "npv": {
+            "lo": -61624.83,
+            "hi": -33499.99
+          },
+          "payback_years": null,
+          "effective_rate": {
+            "lo": 0.0,
+            "hi": 0.0
+          }
+        },
+        {
+          "kwp": 2.0,
+          "annual_generation": {
+            "lo": 3000.0,
+            "hi": 3200.0
+          },
+          "self_consumed_kwh": {
+            "lo": 9.5,
+            "hi": 23.75
+          },
+          "exported_kwh": {
+            "lo": 226.25,
+            "hi": 257.17
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 114.0,
+            "hi": 285.0
+          },
+          "annual_exported_kwh": {
+            "lo": 2715.0,
+            "hi": 3086.0
+          },
+          "annual_bill_savings": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 1200.0,
+            "hi": 2400.0
+          },
+          "annual_net_benefit": {
+            "lo": -2400.0,
+            "hi": -1200.0
+          },
+          "gross_capex": {
+            "lo": 90000.0,
+            "hi": 120000.0
+          },
+          "subsidy": 60000.0,
+          "net_capex": {
+            "lo": 30000.0,
+            "hi": 60000.0
+          },
+          "npv": {
+            "lo": -82166.45,
+            "hi": -44666.66
+          },
+          "payback_years": null,
+          "effective_rate": {
+            "lo": 0.0,
+            "hi": 0.0
+          }
+        },
+        {
+          "kwp": 2.5,
+          "annual_generation": {
+            "lo": 3750.0,
+            "hi": 4000.0
+          },
+          "self_consumed_kwh": {
+            "lo": 9.5,
+            "hi": 23.75
+          },
+          "exported_kwh": {
+            "lo": 288.75,
+            "hi": 323.83
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 114.0,
+            "hi": 285.0
+          },
+          "annual_exported_kwh": {
+            "lo": 3465.0,
+            "hi": 3886.0
+          },
+          "annual_bill_savings": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 1500.0,
+            "hi": 3000.0
+          },
+          "annual_net_benefit": {
+            "lo": -3000.0,
+            "hi": -1500.0
+          },
+          "gross_capex": {
+            "lo": 112500.0,
+            "hi": 150000.0
+          },
+          "subsidy": 69000.0,
+          "net_capex": {
+            "lo": 43500.0,
+            "hi": 81000.0
+          },
+          "npv": {
+            "lo": -108708.06,
+            "hi": -61833.32
+          },
+          "payback_years": null,
+          "effective_rate": {
+            "lo": 0.0,
+            "hi": 0.0
+          }
+        },
+        {
+          "kwp": 3.0,
+          "annual_generation": {
+            "lo": 4500.0,
+            "hi": 4800.0
+          },
+          "self_consumed_kwh": {
+            "lo": 9.5,
+            "hi": 23.75
+          },
+          "exported_kwh": {
+            "lo": 351.25,
+            "hi": 390.5
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 114.0,
+            "hi": 285.0
+          },
+          "annual_exported_kwh": {
+            "lo": 4215.0,
+            "hi": 4686.0
+          },
+          "annual_bill_savings": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 1800.0,
+            "hi": 3600.0
+          },
+          "annual_net_benefit": {
+            "lo": -3600.0,
+            "hi": -1800.0
+          },
+          "gross_capex": {
+            "lo": 135000.0,
+            "hi": 180000.0
+          },
+          "subsidy": 78000.0,
+          "net_capex": {
+            "lo": 57000.0,
+            "hi": 102000.0
+          },
+          "npv": {
+            "lo": -135249.67,
+            "hi": -78999.98
+          },
+          "payback_years": null,
+          "effective_rate": {
+            "lo": 0.0,
+            "hi": 0.0
+          }
+        }
+      ],
+      "roof_max_kwp": 5.91,
+      "sanctioned_load_max_kwp": 3.0,
+      "feasible_max_kwp": 3.0,
+      "binding_constraint": "SANCTIONED_LOAD",
+      "is_economically_capped": false,
+      "usable_area_m2": 71.0,
+      "usable_area_source": "SEGMENTED",
+      "tariff_version": "tn-domestic-2025-07-01",
+      "assumptions_version": "tn-inland-2025",
+      "subsidy_version": "pm-surya-ghar-2024",
+      "assumptions_verified": false,
+      "yield_source": "REGIONAL_FALLBACK",
+      "grid_feasibility": "NOT_VERIFIED",
+      "grid_disclosure": "Grid connection is not verified. Official TNPDCL feasibility is required before installation."
+    },
+    "bldg-demo-4": {
+      "run_id": null,
+      "verdict": "RECOMMENDED",
+      "recommended": {
+        "kwp": 2.5,
+        "annual_generation": {
+          "lo": 3750.0,
+          "hi": 4000.0
+        },
+        "self_consumed_kwh": {
+          "lo": 312.5,
+          "hi": 333.33
+        },
+        "exported_kwh": {
+          "lo": 0.0,
+          "hi": 0.0
+        },
+        "annual_self_consumed_kwh": {
+          "lo": 3750.0,
+          "hi": 4000.0
+        },
+        "annual_exported_kwh": {
+          "lo": 0.0,
+          "hi": 0.0
+        },
+        "annual_bill_savings": {
+          "lo": 43312.5,
+          "hi": 46200.0
+        },
+        "annual_export_credit": {
+          "lo": 0.0,
+          "hi": 0.0
+        },
+        "annual_om_cost": {
+          "lo": 1500.0,
+          "hi": 3000.0
+        },
+        "annual_net_benefit": {
+          "lo": 40312.5,
+          "hi": 44700.0
+        },
+        "gross_capex": {
+          "lo": 112500.0,
+          "hi": 150000.0
+        },
+        "subsidy": 69000.0,
+        "net_capex": {
+          "lo": 43500.0,
+          "hi": 81000.0
+        },
+        "npv": {
+          "lo": 291327.03,
+          "hi": 502832.95
+        },
+        "payback_years": {
+          "lo": 1.0,
+          "hi": 2.0
+        },
+        "effective_rate": {
+          "lo": 10.8281,
+          "hi": 12.32
+        }
+      },
+      "curve": [
+        {
+          "kwp": 0.5,
+          "annual_generation": {
+            "lo": 750.0,
+            "hi": 800.0
+          },
+          "self_consumed_kwh": {
+            "lo": 62.5,
+            "hi": 66.67
+          },
+          "exported_kwh": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 750.0,
+            "hi": 800.0
+          },
+          "annual_exported_kwh": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_bill_savings": {
+            "lo": 8662.5,
+            "hi": 9240.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 300.0,
+            "hi": 600.0
+          },
+          "annual_net_benefit": {
+            "lo": 8062.5,
+            "hi": 8940.0
+          },
+          "gross_capex": {
+            "lo": 22500.0,
+            "hi": 30000.0
+          },
+          "subsidy": 15000.0,
+          "net_capex": {
+            "lo": 7500.0,
+            "hi": 15000.0
+          },
+          "npv": {
+            "lo": 59465.41,
+            "hi": 101766.59
+          },
+          "payback_years": {
+            "lo": 0.8,
+            "hi": 1.9
+          },
+          "effective_rate": {
+            "lo": 10.8281,
+            "hi": 12.32
+          }
+        },
+        {
+          "kwp": 1.0,
+          "annual_generation": {
+            "lo": 1500.0,
+            "hi": 1600.0
+          },
+          "self_consumed_kwh": {
+            "lo": 125.0,
+            "hi": 133.33
+          },
+          "exported_kwh": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 1500.0,
+            "hi": 1600.0
+          },
+          "annual_exported_kwh": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_bill_savings": {
+            "lo": 17325.0,
+            "hi": 18480.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 600.0,
+            "hi": 1200.0
+          },
+          "annual_net_benefit": {
+            "lo": 16125.0,
+            "hi": 17880.0
+          },
+          "gross_capex": {
+            "lo": 45000.0,
+            "hi": 60000.0
+          },
+          "subsidy": 30000.0,
+          "net_capex": {
+            "lo": 15000.0,
+            "hi": 30000.0
+          },
+          "npv": {
+            "lo": 118930.81,
+            "hi": 203533.18
+          },
+          "payback_years": {
+            "lo": 0.8,
+            "hi": 1.9
+          },
+          "effective_rate": {
+            "lo": 10.8281,
+            "hi": 12.32
+          }
+        },
+        {
+          "kwp": 1.5,
+          "annual_generation": {
+            "lo": 2250.0,
+            "hi": 2400.0
+          },
+          "self_consumed_kwh": {
+            "lo": 187.5,
+            "hi": 200.0
+          },
+          "exported_kwh": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 2250.0,
+            "hi": 2400.0
+          },
+          "annual_exported_kwh": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_bill_savings": {
+            "lo": 25987.5,
+            "hi": 27720.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 900.0,
+            "hi": 1800.0
+          },
+          "annual_net_benefit": {
+            "lo": 24187.5,
+            "hi": 26820.0
+          },
+          "gross_capex": {
+            "lo": 67500.0,
+            "hi": 90000.0
+          },
+          "subsidy": 45000.0,
+          "net_capex": {
+            "lo": 22500.0,
+            "hi": 45000.0
+          },
+          "npv": {
+            "lo": 178396.22,
+            "hi": 305299.77
+          },
+          "payback_years": {
+            "lo": 0.8,
+            "hi": 1.9
+          },
+          "effective_rate": {
+            "lo": 10.8281,
+            "hi": 12.32
+          }
+        },
+        {
+          "kwp": 2.0,
+          "annual_generation": {
+            "lo": 3000.0,
+            "hi": 3200.0
+          },
+          "self_consumed_kwh": {
+            "lo": 250.0,
+            "hi": 266.67
+          },
+          "exported_kwh": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 3000.0,
+            "hi": 3200.0
+          },
+          "annual_exported_kwh": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_bill_savings": {
+            "lo": 34650.0,
+            "hi": 36960.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 1200.0,
+            "hi": 2400.0
+          },
+          "annual_net_benefit": {
+            "lo": 32250.0,
+            "hi": 35760.0
+          },
+          "gross_capex": {
+            "lo": 90000.0,
+            "hi": 120000.0
+          },
+          "subsidy": 60000.0,
+          "net_capex": {
+            "lo": 30000.0,
+            "hi": 60000.0
+          },
+          "npv": {
+            "lo": 237861.63,
+            "hi": 407066.36
+          },
+          "payback_years": {
+            "lo": 0.8,
+            "hi": 1.9
+          },
+          "effective_rate": {
+            "lo": 10.8281,
+            "hi": 12.32
+          }
+        },
+        {
+          "kwp": 2.5,
+          "annual_generation": {
+            "lo": 3750.0,
+            "hi": 4000.0
+          },
+          "self_consumed_kwh": {
+            "lo": 312.5,
+            "hi": 333.33
+          },
+          "exported_kwh": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 3750.0,
+            "hi": 4000.0
+          },
+          "annual_exported_kwh": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_bill_savings": {
+            "lo": 43312.5,
+            "hi": 46200.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 1500.0,
+            "hi": 3000.0
+          },
+          "annual_net_benefit": {
+            "lo": 40312.5,
+            "hi": 44700.0
+          },
+          "gross_capex": {
+            "lo": 112500.0,
+            "hi": 150000.0
+          },
+          "subsidy": 69000.0,
+          "net_capex": {
+            "lo": 43500.0,
+            "hi": 81000.0
+          },
+          "npv": {
+            "lo": 291327.03,
+            "hi": 502832.95
+          },
+          "payback_years": {
+            "lo": 1.0,
+            "hi": 2.0
+          },
+          "effective_rate": {
+            "lo": 10.8281,
+            "hi": 12.32
+          }
+        }
+      ],
+      "roof_max_kwp": 2.83,
+      "sanctioned_load_max_kwp": 5.0,
+      "feasible_max_kwp": 2.5,
+      "binding_constraint": "ROOF",
+      "is_economically_capped": false,
+      "usable_area_m2": 34.0,
+      "usable_area_source": "SEGMENTED",
+      "tariff_version": "tn-domestic-2025-07-01",
+      "assumptions_version": "tn-inland-2025",
+      "subsidy_version": "pm-surya-ghar-2024",
+      "assumptions_verified": false,
+      "yield_source": "REGIONAL_FALLBACK",
+      "grid_feasibility": "NOT_VERIFIED",
+      "grid_disclosure": "Grid connection is not verified. Official TNPDCL feasibility is required before installation."
+    },
+    "bldg-demo-5": {
+      "run_id": null,
+      "verdict": "MARGINAL",
+      "recommended": {
+        "kwp": 0.5,
+        "annual_generation": {
+          "lo": 750.0,
+          "hi": 800.0
+        },
+        "self_consumed_kwh": {
+          "lo": 52.0,
+          "hi": 66.67
+        },
+        "exported_kwh": {
+          "lo": 0.0,
+          "hi": 14.67
+        },
+        "annual_self_consumed_kwh": {
+          "lo": 624.0,
+          "hi": 800.0
+        },
+        "annual_exported_kwh": {
+          "lo": 0.0,
+          "hi": 176.0
+        },
+        "annual_bill_savings": {
+          "lo": 1692.0,
+          "hi": 1692.0
+        },
+        "annual_export_credit": {
+          "lo": 0.0,
+          "hi": 0.0
+        },
+        "annual_om_cost": {
+          "lo": 300.0,
+          "hi": 600.0
+        },
+        "annual_net_benefit": {
+          "lo": 1092.0,
+          "hi": 1392.0
+        },
+        "gross_capex": {
+          "lo": 22500.0,
+          "hi": 30000.0
+        },
+        "subsidy": 15000.0,
+        "net_capex": {
+          "lo": 7500.0,
+          "hi": 15000.0
+        },
+        "npv": {
+          "lo": -4914.27,
+          "hi": 9513.32
+        },
+        "payback_years": {
+          "lo": 5.4,
+          "hi": 13.7
+        },
+        "effective_rate": {
+          "lo": 2.115,
+          "hi": 2.256
+        }
+      },
+      "curve": [
+        {
+          "kwp": 0.5,
+          "annual_generation": {
+            "lo": 750.0,
+            "hi": 800.0
+          },
+          "self_consumed_kwh": {
+            "lo": 52.0,
+            "hi": 66.67
+          },
+          "exported_kwh": {
+            "lo": 0.0,
+            "hi": 14.67
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 624.0,
+            "hi": 800.0
+          },
+          "annual_exported_kwh": {
+            "lo": 0.0,
+            "hi": 176.0
+          },
+          "annual_bill_savings": {
+            "lo": 1692.0,
+            "hi": 1692.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 300.0,
+            "hi": 600.0
+          },
+          "annual_net_benefit": {
+            "lo": 1092.0,
+            "hi": 1392.0
+          },
+          "gross_capex": {
+            "lo": 22500.0,
+            "hi": 30000.0
+          },
+          "subsidy": 15000.0,
+          "net_capex": {
+            "lo": 7500.0,
+            "hi": 15000.0
+          },
+          "npv": {
+            "lo": -4914.27,
+            "hi": 9513.32
+          },
+          "payback_years": {
+            "lo": 5.4,
+            "hi": 13.7
+          },
+          "effective_rate": {
+            "lo": 2.115,
+            "hi": 2.256
+          }
+        },
+        {
+          "kwp": 1.0,
+          "annual_generation": {
+            "lo": 1500.0,
+            "hi": 1600.0
+          },
+          "self_consumed_kwh": {
+            "lo": 52.0,
+            "hi": 78.0
+          },
+          "exported_kwh": {
+            "lo": 47.0,
+            "hi": 81.33
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 624.0,
+            "hi": 936.0
+          },
+          "annual_exported_kwh": {
+            "lo": 564.0,
+            "hi": 976.0
+          },
+          "annual_bill_savings": {
+            "lo": 1692.0,
+            "hi": 1692.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 600.0,
+            "hi": 1200.0
+          },
+          "annual_net_benefit": {
+            "lo": 492.0,
+            "hi": 1092.0
+          },
+          "gross_capex": {
+            "lo": 45000.0,
+            "hi": 60000.0
+          },
+          "subsidy": 30000.0,
+          "net_capex": {
+            "lo": 15000.0,
+            "hi": 30000.0
+          },
+          "npv": {
+            "lo": -25455.88,
+            "hi": -1653.34
+          },
+          "payback_years": {
+            "lo": 13.7,
+            "hi": 61.0
+          },
+          "effective_rate": {
+            "lo": 1.0575,
+            "hi": 1.128
+          }
+        },
+        {
+          "kwp": 1.5,
+          "annual_generation": {
+            "lo": 2250.0,
+            "hi": 2400.0
+          },
+          "self_consumed_kwh": {
+            "lo": 52.0,
+            "hi": 78.0
+          },
+          "exported_kwh": {
+            "lo": 109.5,
+            "hi": 148.0
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 624.0,
+            "hi": 936.0
+          },
+          "annual_exported_kwh": {
+            "lo": 1314.0,
+            "hi": 1776.0
+          },
+          "annual_bill_savings": {
+            "lo": 1692.0,
+            "hi": 1692.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 900.0,
+            "hi": 1800.0
+          },
+          "annual_net_benefit": {
+            "lo": -108.0,
+            "hi": 792.0
+          },
+          "gross_capex": {
+            "lo": 67500.0,
+            "hi": 90000.0
+          },
+          "subsidy": 45000.0,
+          "net_capex": {
+            "lo": 22500.0,
+            "hi": 45000.0
+          },
+          "npv": {
+            "lo": -45997.49,
+            "hi": -12820.01
+          },
+          "payback_years": null,
+          "effective_rate": {
+            "lo": 0.705,
+            "hi": 0.752
+          }
+        },
+        {
+          "kwp": 2.0,
+          "annual_generation": {
+            "lo": 3000.0,
+            "hi": 3200.0
+          },
+          "self_consumed_kwh": {
+            "lo": 52.0,
+            "hi": 78.0
+          },
+          "exported_kwh": {
+            "lo": 172.0,
+            "hi": 214.67
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 624.0,
+            "hi": 936.0
+          },
+          "annual_exported_kwh": {
+            "lo": 2064.0,
+            "hi": 2576.0
+          },
+          "annual_bill_savings": {
+            "lo": 1692.0,
+            "hi": 1692.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 1200.0,
+            "hi": 2400.0
+          },
+          "annual_net_benefit": {
+            "lo": -708.0,
+            "hi": 492.0
+          },
+          "gross_capex": {
+            "lo": 90000.0,
+            "hi": 120000.0
+          },
+          "subsidy": 60000.0,
+          "net_capex": {
+            "lo": 30000.0,
+            "hi": 60000.0
+          },
+          "npv": {
+            "lo": -66539.1,
+            "hi": -23986.67
+          },
+          "payback_years": null,
+          "effective_rate": {
+            "lo": 0.5288,
+            "hi": 0.564
+          }
+        },
+        {
+          "kwp": 2.5,
+          "annual_generation": {
+            "lo": 3750.0,
+            "hi": 4000.0
+          },
+          "self_consumed_kwh": {
+            "lo": 52.0,
+            "hi": 78.0
+          },
+          "exported_kwh": {
+            "lo": 234.5,
+            "hi": 281.33
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 624.0,
+            "hi": 936.0
+          },
+          "annual_exported_kwh": {
+            "lo": 2814.0,
+            "hi": 3376.0
+          },
+          "annual_bill_savings": {
+            "lo": 1692.0,
+            "hi": 1692.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 1500.0,
+            "hi": 3000.0
+          },
+          "annual_net_benefit": {
+            "lo": -1308.0,
+            "hi": 192.0
+          },
+          "gross_capex": {
+            "lo": 112500.0,
+            "hi": 150000.0
+          },
+          "subsidy": 69000.0,
+          "net_capex": {
+            "lo": 43500.0,
+            "hi": 81000.0
+          },
+          "npv": {
+            "lo": -93080.71,
+            "hi": -41153.33
+          },
+          "payback_years": null,
+          "effective_rate": {
+            "lo": 0.423,
+            "hi": 0.4512
+          }
+        },
+        {
+          "kwp": 3.0,
+          "annual_generation": {
+            "lo": 4500.0,
+            "hi": 4800.0
+          },
+          "self_consumed_kwh": {
+            "lo": 52.0,
+            "hi": 78.0
+          },
+          "exported_kwh": {
+            "lo": 297.0,
+            "hi": 348.0
+          },
+          "annual_self_consumed_kwh": {
+            "lo": 624.0,
+            "hi": 936.0
+          },
+          "annual_exported_kwh": {
+            "lo": 3564.0,
+            "hi": 4176.0
+          },
+          "annual_bill_savings": {
+            "lo": 1692.0,
+            "hi": 1692.0
+          },
+          "annual_export_credit": {
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "annual_om_cost": {
+            "lo": 1800.0,
+            "hi": 3600.0
+          },
+          "annual_net_benefit": {
+            "lo": -1908.0,
+            "hi": -108.0
+          },
+          "gross_capex": {
+            "lo": 135000.0,
+            "hi": 180000.0
+          },
+          "subsidy": 78000.0,
+          "net_capex": {
+            "lo": 57000.0,
+            "hi": 102000.0
+          },
+          "npv": {
+            "lo": -119622.33,
+            "hi": -58320.0
+          },
+          "payback_years": null,
+          "effective_rate": {
+            "lo": 0.3525,
+            "hi": 0.376
+          }
+        }
+      ],
+      "roof_max_kwp": 6.33,
+      "sanctioned_load_max_kwp": 3.0,
+      "feasible_max_kwp": 3.0,
+      "binding_constraint": "SANCTIONED_LOAD",
+      "is_economically_capped": true,
+      "usable_area_m2": 76.0,
+      "usable_area_source": "SEGMENTED",
+      "tariff_version": "tn-domestic-2025-07-01",
+      "assumptions_version": "tn-inland-2025",
+      "subsidy_version": "pm-surya-ghar-2024",
+      "assumptions_verified": false,
+      "yield_source": "REGIONAL_FALLBACK",
+      "grid_feasibility": "NOT_VERIFIED",
+      "grid_disclosure": "Grid connection is not verified. Official TNPDCL feasibility is required before installation."
+    }
+  }
+}

@@ -1,0 +1,77 @@
+[
+ {
+  "slug": "01-home-address-and-bill",
+  "screenId": "3c6298b43449457e92108f8a3dc7f364",
+  "title": "PV Maps - Solar Calculator",
+  "width": "2560",
+  "height": "3874",
+  "png_bytes": 33755,
+  "png": "C:\\Users\\asus\\AppData\\Local\\Temp\\claude\\D--PV-Maps\\a0658a97-073a-4759-93cf-00abdaacefa1\\scratchpad\\out\\01-home-address-and-bill.png",
+  "html_bytes": 18345,
+  "html": "C:\\Users\\asus\\AppData\\Local\\Temp\\claude\\D--PV-Maps\\a0658a97-073a-4759-93cf-00abdaacefa1\\scratchpad\\out\\01-home-address-and-bill.html"
+ },
+ {
+  "slug": "02-roof-confirm-map",
+  "screenId": "d168217b05804fd48babf13374e25fb1",
+  "title": "High resolution aerial satellite view of a residential neighborhood in Tamil Nadu India, showing flat concrete terrace rooftops, water tanks, solar drying areas, coconut palm tops nearby, crisp overhead satellite photography, neutral natural daylight, realistic satellite map tile aesthetic without any text or overlays",
+  "width": "1024",
+  "height": "1024",
+  "png_bytes": 167697,
+  "png": "C:\\Users\\asus\\AppData\\Local\\Temp\\claude\\D--PV-Maps\\a0658a97-073a-4759-93cf-00abdaacefa1\\scratchpad\\out\\02-roof-confirm-map.png"
+ },
+ {
+  "slug": "02-roof-confirm-map",
+  "screenId": "d39f3b807aa346ccbdcd3be2087ce23a",
+  "title": "PV Maps - Is this your roof?",
+  "width": "2560",
+  "height": "2048",
+  "png_bytes": 75730,
+  "png": "C:\\Users\\asus\\AppData\\Local\\Temp\\claude\\D--PV-Maps\\a0658a97-073a-4759-93cf-00abdaacefa1\\scratchpad\\out\\02-roof-confirm-map.png",
+  "html_bytes": 13621,
+  "html": "C:\\Users\\asus\\AppData\\Local\\Temp\\claude\\D--PV-Maps\\a0658a97-073a-4759-93cf-00abdaacefa1\\scratchpad\\out\\02-roof-confirm-map.html"
+ },
+ {
+  "slug": "03-results-economics",
+  "screenId": "0b069c68771449cd83c5a800e9c0b5c4",
+  "title": "PV Maps - Mobile Solar Result",
+  "width": "780",
+  "height": "3378",
+  "png_bytes": 36122,
+  "png": "C:\\Users\\asus\\AppData\\Local\\Temp\\claude\\D--PV-Maps\\a0658a97-073a-4759-93cf-00abdaacefa1\\scratchpad\\out\\03-results-economics.png",
+  "html_bytes": 15819,
+  "html": "C:\\Users\\asus\\AppData\\Local\\Temp\\claude\\D--PV-Maps\\a0658a97-073a-4759-93cf-00abdaacefa1\\scratchpad\\out\\03-results-economics.html"
+ },
+ {
+  "slug": "04-sizing-curve",
+  "screenId": "05bfac60a8ad4de0a96c5210aa004915",
+  "title": "PV Maps - Annual Savings Yield Curve",
+  "width": "780",
+  "height": "4268",
+  "png_bytes": 30828,
+  "png": "C:\\Users\\asus\\AppData\\Local\\Temp\\claude\\D--PV-Maps\\a0658a97-073a-4759-93cf-00abdaacefa1\\scratchpad\\out\\04-sizing-curve.png",
+  "html_bytes": 25171,
+  "html": "C:\\Users\\asus\\AppData\\Local\\Temp\\claude\\D--PV-Maps\\a0658a97-073a-4759-93cf-00abdaacefa1\\scratchpad\\out\\04-sizing-curve.html"
+ },
+ {
+  "slug": "05-assumptions-and-grid",
+  "screenId": "cd2862295e964bcf99c40a32d62dceb3",
+  "title": "PV Maps - What we assumed & Disclosures",
+  "width": "780",
+  "height": "4020",
+  "png_bytes": 27827,
+  "png": "C:\\Users\\asus\\AppData\\Local\\Temp\\claude\\D--PV-Maps\\a0658a97-073a-4759-93cf-00abdaacefa1\\scratchpad\\out\\05-assumptions-and-grid.png",
+  "html_bytes": 16574,
+  "html": "C:\\Users\\asus\\AppData\\Local\\Temp\\claude\\D--PV-Maps\\a0658a97-073a-4759-93cf-00abdaacefa1\\scratchpad\\out\\05-assumptions-and-grid.html"
+ },
+ {
+  "slug": "06-edge-states",
+  "screenId": "6e7b5c4f4ef84ec6a04dc0904ddffa06",
+  "title": "PV Maps - Feasibility Assessment & Negative Results",
+  "width": "780",
+  "height": "6084",
+  "png_bytes": 23741,
+  "png": "C:\\Users\\asus\\AppData\\Local\\Temp\\claude\\D--PV-Maps\\a0658a97-073a-4759-93cf-00abdaacefa1\\scratchpad\\out\\06-edge-states.png",
+  "html_bytes": 20288,
+  "html": "C:\\Users\\asus\\AppData\\Local\\Temp\\claude\\D--PV-Maps\\a0658a97-073a-4759-93cf-00abdaacefa1\\scratchpad\\out\\06-edge-states.html"
+ }
+]

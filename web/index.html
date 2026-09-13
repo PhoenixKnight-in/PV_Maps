@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PV Maps — what solar is actually worth on your roof</title>
+    <!--
+      No webfont <link> here, deliberately. STATUS.md §1: the app ships with
+      zero external network dependencies, and a demo that pauses on
+      fonts.googleapis.com is a demo that can fail on stage.
+
+      Geist / Inter / JetBrains Mono lead each stack in tailwind.config.js and
+      fall back to Segoe UI Variable Display / Segoe UI Variable Text /
+      Cascadia Mono, all local to Windows 11. To vendor them, drop woff2 files
+      into public/fonts and add a @font-face block — the stacks pick them up
+      with no other change (STATUS.md §4 item 4).
+    -->
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

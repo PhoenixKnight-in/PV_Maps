@@ -1,0 +1,38 @@
+{
+  "version": "pm-surya-ghar-2024",
+  "effective_from": "2024-02-13",
+  "effective_to": null,
+  "category": "DOMESTIC",
+  "currency": "INR",
+  "verification_status": "UNVERIFIED_AGAINST_PRIMARY_SOURCE",
+  "notes": [
+    "PRD FR-4.3. Central rooftop-solar subsidy, tiered by system size.",
+    "VERIFY BEFORE QUOTING A RUPEE FIGURE TO ANYONE. Subsidy rates change by notification and the numbers below are from secondary reporting, not the scheme document. This file exists so that verification is a one-file edit (NFR-4), not a code change.",
+    "Tiers are marginal, like the tariff slabs: kwp_from is EXCLUSIVE, kwp_to is INCLUSIVE. A 3 kWp system therefore earns 2 x 30000 + 1 x 18000 = 78000, then the cap binds.",
+    "state_top_up is 0 pending confirmation of any TN-specific addition. Do not invent one.",
+    "PRD FR-4.4 subsidy_avoided -- the fiscal-side number -- is a Phase 2 concern and is not modelled here."
+  ],
+
+  "central": {
+    "tiers": [
+      { "kwp_from": 0, "kwp_to": 2,    "inr_per_kwp": 30000 },
+      { "kwp_from": 2, "kwp_to": 3,    "inr_per_kwp": 18000 },
+      { "kwp_from": 3, "kwp_to": null, "inr_per_kwp": 0     }
+    ],
+    "cap_inr": 78000
+  },
+
+  "state_top_up": {
+    "tiers": [
+      { "kwp_from": 0, "kwp_to": null, "inr_per_kwp": 0 }
+    ],
+    "cap_inr": 0,
+    "note": "TN state component unconfirmed. Zero until sourced."
+  },
+
+  "eligibility": {
+    "max_kwp": 10,
+    "requires_domestic_category": true,
+    "note": "Systems above max_kwp receive the capped amount, not a scaled one."
+  }
+}

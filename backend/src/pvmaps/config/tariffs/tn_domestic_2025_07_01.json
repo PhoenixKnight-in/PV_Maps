@@ -1,0 +1,23 @@
+{
+  "version": "tn-domestic-2025-07-01",
+  "effective_from": "2025-07-01",
+  "category": "DOMESTIC",
+  "currency": "INR",
+  "billing_period_months": 1,
+  "source": "TNPDCL domestic tariff effective 2025-07-01, monthly-equivalent form. PLACEHOLDER: no primary TNERC/TNPDCL order has been read for these slabs yet - see verification_status.",
+  "verification_status": "UNVERIFIED_AGAINST_PRIMARY_SOURCE",
+  "notes": [
+    "Slab bounds are (slab_from, slab_to]: slab_from is EXCLUSIVE, slab_to is INCLUSIVE.",
+    "So {slab_from: 100, slab_to: 200} covers units 101..200, matching the published '101-200' slab label.",
+    "Rates are JSON strings, never numbers, so they parse straight into Decimal with no binary float in the path.",
+    "PRD 10 (must verify) OPEN: TN bills BIMONTHLY. The free allowance is 100 units, reportedly rising to 200 for consumers at or below 500 units bimonthly. That is NOT a simple 2x scaling of this monthly-equivalent schedule. Do not ship a bimonthly conversion until the primary TNERC order is read - see tariff.schedule.to_billing_period().",
+    "Acceptance criterion PRD 10 (acceptance criteria): computed bill must match 5 real TNPDCL bills TO THE RUPEE. Until tests/fixtures/bills/real_bills.json is populated, this schedule is unvalidated."
+  ],
+  "slabs": [
+    { "slab_from": 0,   "slab_to": 100,  "rate": "0.00"  },
+    { "slab_from": 100, "slab_to": 200,  "rate": "4.70"  },
+    { "slab_from": 200, "slab_to": 300,  "rate": "6.30"  },
+    { "slab_from": 300, "slab_to": 400,  "rate": "8.40"  },
+    { "slab_from": 400, "slab_to": null, "rate": "11.55" }
+  ]
+}

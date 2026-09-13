@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=JetBrains+Mono:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<style>
+    @layer base {
+      html, body { margin: 0; padding: 0; }
+      body { overscroll-behavior: none; }
+      main > :first-child { margin-top: 0 !important; }
+      main > :last-child { margin-bottom: 0 !important; }
+    }
+    ::-webkit-scrollbar { display: none; }
+  </style>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface": "#f8f9ff",
+            "surface-dim": "#cbdbf5",
+            "surface-bright": "#f8f9ff",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#eff4ff",
+            "surface-container": "#f1f5f9",
+            "surface-container-high": "#e2e8f0",
+            "surface-container-highest": "#cbd5e1",
+            "on-surface": "#0f172a",
+            "on-surface-variant": "#475569",
+            "outline": "#94a3b8",
+            "outline-variant": "#e2e8f0",
+            "solar-amber": "#d97706",
+            "solar-amber-light": "#f59e0b",
+            "solar-amber-tint": "#fffbeb",
+            "solar-amber-border": "#fde68a",
+            "grid-emerald": "#059669",
+            "grid-emerald-tint": "#ecfdf5",
+            "grid-emerald-border": "#a7f3d0",
+            "feeder-cyan": "#0284c7",
+            "constraint-crimson": "#dc2626",
+            "text-primary": "#0f172a",
+            "text-secondary": "#475569",
+            "text-muted": "#64748b",
+            "slate-border": "#e2e8f0",
+            "slate-border-subtle": "#f1f5f9"
+          },
+          fontFamily: {
+            "headline-lg": ["Geist", "sans-serif"],
+            "headline-md": ["Geist", "sans-serif"],
+            "body-base": ["Geist", "sans-serif"],
+            "body-sm": ["Geist", "sans-serif"],
+            "mono-metric-base": ["JetBrains Mono", "monospace"],
+            "mono-metric-lg": ["JetBrains Mono", "monospace"],
+            "label-caps": ["JetBrains Mono", "monospace"],
+            "disclaimer-legal": ["Geist", "sans-serif"]
+          },
+          fontSize: {
+            "headline-lg": ["1.75rem", { "lineHeight": "2.25rem", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "headline-md": ["1.25rem", { "lineHeight": "1.75rem", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "body-base": ["0.875rem", { "lineHeight": "1.375rem", "letterSpacing": "-0.005em", "fontWeight": "400" }],
+            "body-sm": ["0.75rem", { "lineHeight": "1.125rem", "letterSpacing": "0em", "fontWeight": "400" }],
+            "mono-metric-base": ["1rem", { "lineHeight": "1.25rem", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "mono-metric-lg": ["1.75rem", { "lineHeight": "2rem", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "label-caps": ["0.6875rem", { "lineHeight": "0.875rem", "letterSpacing": "0.06em", "fontWeight": "600" }],
+            "disclaimer-legal": ["0.6875rem", { "lineHeight": "1rem", "letterSpacing": "0.01em", "fontWeight": "400" }]
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-slate-50 font-body-base text-body-base text-text-primary antialiased min-h-screen">
+<!-- Top Navigation & Header -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200">
+<div class="h-14 w-full px-5 flex items-center justify-between gap-4">
+<div class="flex items-center gap-3 shrink-0">
+        https://lh3.googleusercontent.com/aida/AEtjO1VxInUeRj0QBIZdOEixeOKQ2ULRXqp7PjI5Ejbh-nJo8WV2iqHgAJUiOyif3oRQTm-K8gsANQAFGUvLMSHrw47seJzmcQ2wVE7J2QFzPY0uhZ_XISKzAP06Y1DbaIXlfDlX-AHo7n8dQBC3VnodI9IAF49lsc2JrjVxu95BQCqqjjPaYczHd7E8s-dMk2RD9n-3lRe6j5TnV-TMoZDRanAGjGM2IHsE2pnYO0AKMbiXsExZb91-dEgZ-zw
+        <div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps text-text-primary tracking-widest font-bold">PV MAPS</span>
+<span class="px-1.5 py-0.5 rounded bg-sky-50 text-feeder-cyan border border-sky-200 font-label-caps text-label-caps font-semibold">TAMIL NADU PILOT (VELLORE)</span>
+</div>
+<div class="flex items-center gap-1.5 mt-0.5">
+<span class="h-1.5 w-1.5 rounded-full bg-grid-emerald animate-pulse"></span>
+<span class="font-label-caps text-label-caps text-text-muted">PILOT AREA: VELLORE WARD 12 ACTIVE</span>
+</div>
+</div>
+</div>
+<div class="hidden xl:flex items-center flex-1 max-w-xl mx-2 gap-3">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-[18px]">search</span>
+<input class="w-full h-9 pl-9 pr-12 rounded bg-slate-100/80 text-text-primary placeholder:text-text-muted font-body-sm text-body-sm border border-slate-200 focus:outline-none focus:bg-white focus:border-sky-500 transition-colors" placeholder="Search pilot address, Consumer No, or drop pin... e.g. 14 Gandhi Nagar, Katpadi" type="text"/>
+<span class="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-white text-text-muted font-label-caps text-label-caps border border-slate-200 shadow-sm">⌘K</span>
+</div>
+<div class="flex items-center p-0.5 rounded bg-slate-100 border border-slate-200 shrink-0">
+<button class="px-2.5 py-1 rounded font-label-caps text-label-caps bg-white text-text-primary font-bold shadow-sm" type="button">Homeowner View</button>
+<button class="px-2.5 py-1 rounded font-label-caps text-label-caps text-text-muted hover:text-text-primary transition-colors" type="button">Grid Intelligence Mode (DISCOM/EPC)</button>
+</div>
+</div>
+<div class="flex items-center gap-4 shrink-0">
+<nav class="hidden lg:flex items-center gap-1" data-active-classes="bg-slate-100 text-text-primary font-bold rounded">
+<a class="px-2.5 py-1.5 font-body-sm text-body-sm text-text-muted hover:text-text-primary hover:bg-slate-100 rounded transition-colors" data-path="map-explorer" href="#">Map Explorer</a>
+<a aria-current="page" class="px-2.5 py-1.5 transition-colors bg-slate-100 text-text-primary font-semibold border border-slate-200 rounded" data-path="bill-to-roof-optimiser" href="#">Bill-to-Roof Optimiser</a>
+<a class="px-2.5 py-1.5 font-body-sm text-body-sm text-text-muted hover:text-text-primary hover:bg-slate-100 rounded transition-colors" data-path="dt-capacity-queue" href="#">DT Capacity &amp; Queue</a>
+<a class="px-2.5 py-1.5 font-body-sm text-body-sm text-text-muted hover:text-text-primary hover:bg-slate-100 rounded transition-colors" data-path="area-analytics-vit" href="#">Area Analytics (VIT)</a>
+<a class="px-2.5 py-1.5 font-body-sm text-body-sm text-text-muted hover:text-text-primary hover:bg-slate-100 rounded transition-colors" data-path="design-system" href="#">Design System</a>
+</nav>
+<div class="flex items-center gap-2.5 pl-2">
+<span class="hidden sm:inline-flex items-center px-2 py-1 rounded bg-amber-50 text-solar-amber border border-amber-200 font-label-caps text-label-caps font-bold">TNPDCL TARIFF v2024.2</span>
+<button class="px-3 py-1.5 rounded bg-slate-900 hover:bg-slate-800 font-label-caps text-label-caps text-white font-semibold transition-colors shadow-sm" type="button">UTILITY PORTAL</button>
+<div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-text-secondary text-[18px]">person</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Subheader Micro-Strip -->
+<div class="h-6 w-full px-5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps text-solar-amber font-bold">CORE THESIS:</span>
+<span class="font-disclaimer-legal text-disclaimer-legal text-text-secondary">"The roof is not the recommendation. The bill is." — Algorithmic daytime solar sizing constrained by contracted load &amp; real export tariffs.</span>
+</div>
+<div class="flex items-center gap-3 font-label-caps text-label-caps text-text-muted">
+<span class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 rounded-full bg-feeder-cyan"></span>FEEDER: 11kV VIT-04</span>
+<span class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 rounded-full bg-solar-amber"></span>DT LOAD: 68%</span>
+</div>
+</div>
+</header>
+<!-- Main Workstation Viewport -->
+<main class="w-full pt-20 bg-slate-50 min-h-[calc(100vh-3.5rem)]">
+<div class="flex flex-col w-full relative overflow-hidden select-none">
+<!-- Interactive Spatial Canvas / Architectural Cartographic Basemap -->
+<div class="relative w-full h-[calc(100vh-5rem)] min-h-[840px] bg-slate-100 overflow-hidden">
+<!-- Crisp Architectural Light Basemap Grid Pattern -->
+<div class="absolute inset-0 w-full h-full bg-[#f8fafc]" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px), linear-gradient(to right, #f1f5f9 1px, transparent 1px), linear-gradient(to bottom, #f1f5f9 1px, transparent 1px); background-size: 20px 20px, 80px 80px, 80px 80px;"></div>
+<!-- Technical Cadastral Lines & GeoJSON Architectural Overlay -->
+<div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+<svg class="w-full h-full max-w-6xl max-h-[760px] opacity-95 transition-all duration-700" fill="none" viewbox="0 0 1000 700" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<!-- Obstruction Hatching for Light Surface -->
+<pattern height="8" id="obstructionHatchLight" patterntransform="rotate(45)" patternunits="userSpaceOnUse" width="8">
+<line stroke="#dc2626" stroke-opacity="0.75" stroke-width="1.8" x1="0" x2="0" y1="0" y2="8"></line>
+</pattern>
+<!-- Architectural PV Cell Grid (Crisp Yellow-Amber over Blueprint-Clean Tile) -->
+<pattern height="26" id="pvCellGridLight" patternunits="userSpaceOnUse" width="16">
+<rect fill="#fef3c7" fill-opacity="0.8" height="25" rx="1" width="15"></rect>
+<rect height="24" stroke="#d97706" stroke-opacity="0.45" stroke-width="0.75" width="14" x="0.5" y="0.5"></rect>
+<line stroke="#d97706" stroke-opacity="0.3" stroke-width="0.5" x1="7.5" x2="7.5" y1="0" y2="25"></line>
+</pattern>
+</defs>
+<!-- Surrounding Street Context Lines -->
+<path d="M 50 160 L 950 120" stroke="#cbd5e1" stroke-linecap="round" stroke-width="14"></path>
+<text fill="#94a3b8" font-family="Geist" font-size="10" font-weight="600" letter-spacing="0.1em" x="200" y="145">EAST MAIN ROAD (12m RIGHT OF WAY)</text>
+<path d="M 400 30 L 440 680" stroke="#cbd5e1" stroke-linecap="round" stroke-width="10"></path>
+<text fill="#94a3b8" font-family="Geist" font-size="9" font-weight="600" letter-spacing="0.1em" transform="rotate(84 415 320)" x="415" y="320">CROSS LANE 3</text>
+<!-- Surrounding Cadastral Parcel Boundaries -->
+<polygon fill="#ffffff" fill-opacity="0.7" points="120,80 340,60 380,240 160,260" stroke="#94a3b8" stroke-dasharray="3 3" stroke-width="1.2"></polygon>
+<text fill="#94a3b8" font-family="JetBrains Mono" font-size="8" x="180" y="170">PARCEL #12-04190</text>
+<polygon fill="#ffffff" fill-opacity="0.7" points="410,50 670,40 690,210 430,220" stroke="#94a3b8" stroke-dasharray="3 3" stroke-width="1.2"></polygon>
+<text fill="#94a3b8" font-family="JetBrains Mono" font-size="8" x="490" y="130">PARCEL #12-04191</text>
+<polygon fill="#ffffff" fill-opacity="0.7" points="720,70 940,90 910,290 690,270" stroke="#94a3b8" stroke-dasharray="3 3" stroke-width="1.2"></polygon>
+<polygon fill="#ffffff" fill-opacity="0.7" points="140,310 390,300 420,540 170,550" stroke="#94a3b8" stroke-dasharray="3 3" stroke-width="1.2"></polygon>
+<!-- Target Parcel: #14 East Main Road (Cadastral Boundary in Cyan) -->
+<polygon fill="#f0f9ff" fill-opacity="0.6" points="420,240 760,210 790,560 450,590" stroke="#0284c7" stroke-dasharray="6 4" stroke-width="1.75"></polygon>
+<text class="font-label-caps text-label-caps" fill="#0284c7" font-weight="700" x="430" y="232">TNERC_PARCEL_VK12_04192 (68.0 m² SLAB)</text>
+<!-- SAM2 Rooftop Polygon Silhouette -->
+<g class="cursor-pointer transition-all duration-300" id="target-rooftop">
+<!-- Active Rooftop Usable Plane (48.2 m²) with PV Cell Grid -->
+<polygon fill="url(#pvCellGridLight)" points="445,260 740,235 770,535 475,560" stroke="#d97706" stroke-width="2.5"></polygon>
+<!-- Parapet Edge Shadow Cutout Zone (South-West Perimeter) -->
+<path d="M 445 260 L 455 260 L 485 550 L 475 560 Z" fill="#fee2e2" fill-opacity="0.8" stroke="#fca5a5" stroke-width="1"></path>
+<path d="M 475 560 L 770 535 L 766 525 L 485 550 Z" fill="#fee2e2" fill-opacity="0.8" stroke="#fca5a5" stroke-width="1"></path>
+<!-- Obstruction 1: Overhead Water Storage Tank + RCC Stand (4 m²) -->
+<rect fill="url(#obstructionHatchLight)" height="52" rx="2" stroke="#dc2626" stroke-width="1.5" width="68" x="650" y="270"></rect>
+<circle cx="684" cy="296" fill="#ffffff" fill-opacity="0.9" r="16" stroke="#dc2626" stroke-width="1.5"></circle>
+<text class="font-label-caps text-label-caps" fill="#b91c1c" font-size="9" font-weight="700" x="635" y="262">OBST-01: OVERHEAD TANK (4.0m²)</text>
+<!-- Obstruction 2: Headroom / Staircase Cabin (8 m²) -->
+<polygon fill="url(#obstructionHatchLight)" points="460,370 540,362 546,440 466,448" stroke="#dc2626" stroke-width="1.5"></polygon>
+<text class="font-label-caps text-label-caps" fill="#b91c1c" font-size="9" font-weight="700" x="460" y="464">OBST-02: STAIRCASE CABIN (8.0m²)</text>
+<!-- Roof Anchor Pin & Spatial Label -->
+<circle cx="600" cy="400" fill="#d97706" r="5.5"></circle>
+<circle class="animate-ping" cx="600" cy="400" fill="#f59e0b" fill-opacity="0.3" r="14"></circle>
+<line stroke="#d97706" stroke-width="1.5" x1="600" x2="630" y1="400" y2="440"></line>
+<rect fill="#ffffff" height="26" rx="3" stroke="#cbd5e1" stroke-width="1" width="138" x="630" y="430"></rect>
+<text class="font-label-caps text-label-caps" fill="#0f172a" font-weight="600" x="638" y="447">ACTIVE PV POLYGON: 48.2m²</text>
+</g>
+</svg>
+</div>
+<!-- Map Coordinate Calibration Corner Grid Indicators -->
+<div class="absolute bottom-16 left-6 pointer-events-none hidden lg:flex items-center gap-4 text-text-muted font-label-caps text-label-caps bg-white/95 backdrop-blur-sm px-3.5 py-2 rounded-lg border border-slate-200 shadow-md">
+<span class="flex items-center gap-1.5 text-feeder-cyan font-bold"><span class="h-2 w-2 rounded-full bg-feeder-cyan animate-pulse"></span>SAM2 AI BOUNDARY SYNCED</span>
+<span class="text-slate-400">|</span>
+<span>AZIMUTH: 184° SSE (OPTIMAL)</span>
+<span class="text-slate-400">|</span>
+<span>GHI: 5.48 kWh/m²/day</span>
+<span class="text-slate-400">|</span>
+<span>TILT ESTIMATE: 11° FLAT RCC</span>
+</div>
+<!-- Spatial Micro-HUD Tooling -->
+<div class="absolute top-4 right-6 flex items-center gap-2 z-20">
+<div class="flex items-center bg-white/95 backdrop-blur-md p-1 rounded-lg shadow-sm border border-slate-200">
+<button class="px-2.5 py-1 text-label-caps font-label-caps bg-slate-100 text-text-primary rounded font-bold hover:bg-slate-200 transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-solar-amber">layers</span>
+              3D SHADOW SIM
+            </button>
+<button class="px-2.5 py-1 text-label-caps font-label-caps text-text-muted hover:text-text-primary transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">straighten</span>
+              POLY METER
+            </button>
+<button class="px-2 py-1 text-text-muted hover:text-text-primary transition-colors" title="Export GeoJSON">
+<span class="material-symbols-outlined text-[16px]">file_download</span>
+</button>
+</div>
+<div class="flex items-center bg-white/95 backdrop-blur-md p-1 rounded-lg shadow-sm border border-slate-200 text-text-primary">
+<button class="w-7 h-7 flex items-center justify-center hover:bg-slate-100 rounded text-body-sm font-bold">+</button>
+<span class="h-3 w-[1px] bg-slate-200 mx-0.5"></span>
+<button class="w-7 h-7 flex items-center justify-center hover:bg-slate-100 rounded text-body-sm font-bold">−</button>
+</div>
+</div>
+<!-- MAIN DUAL-CHAMBER FLOATING DIAGNOSTIC WORKSPACE -->
+<div class="absolute inset-0 pointer-events-none p-4 lg:p-6 flex flex-col justify-between overflow-y-auto lg:overflow-visible">
+<!-- TOP LAYER: Floating Property Verification Pill -->
+<div class="w-full flex flex-wrap items-center justify-between gap-3 pointer-events-auto">
+<div class="flex flex-wrap items-center gap-2.5 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-xl shadow-md border border-slate-200">
+<div class="h-8 w-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-solar-amber shrink-0">
+<span class="material-symbols-outlined text-[20px]">location_on</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-text-primary text-sm font-bold tracking-tight">#14 East Main Rd, Gandhi Nagar</span>
+<span class="text-text-muted font-body-sm text-xs">Katpadi, Vellore — 632006</span>
+</div>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="font-label-caps text-label-caps text-text-muted">12.9698° N, 79.1559° E</span>
+<span class="h-1 w-1 rounded-full bg-slate-300"></span>
+<span class="font-label-caps text-label-caps text-grid-emerald font-bold flex items-center gap-1">
+<span class="h-1.5 w-1.5 rounded-full bg-grid-emerald"></span>HIGH CONFIDENCE (IoU 0.82 SAM2 + GROUND SURVEYED)
+                  </span>
+</div>
+</div>
+<button class="ml-2 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 border border-slate-200 text-text-secondary font-label-caps text-label-caps font-bold transition-colors">
+                EDIT MASK
+              </button>
+</div>
+<!-- Utility Tariff Version Sync Tag -->
+<div class="hidden sm:flex items-center gap-2 bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-xl border border-slate-200 text-label-caps font-label-caps text-text-muted shadow-sm">
+<span class="material-symbols-outlined text-feeder-cyan text-[17px]">bolt</span>
+<span>TNPDCL TARIFF 1A (LT-DOMESTIC)</span>
+<span class="text-text-primary font-bold">ORDER TNERC No. 8/2024</span>
+</div>
+</div>
+<!-- MID LAYER: Dual Floating Diagnostic Columns -->
+<div class="w-full flex flex-col lg:flex-row items-stretch justify-between gap-6 pointer-events-auto my-auto pt-4 pb-2">
+<!-- LEFT COLUMN: Sizing & Regulatory Constraint Tri-Card Cockpit -->
+<div class="w-full lg:w-[440px] flex flex-col gap-3.5 bg-white/95 backdrop-blur-xl p-5 rounded-xl shadow-xl border border-slate-200">
+<!-- Sizing Paradigm Statement / Thesis Banner -->
+<div class="p-3 rounded-lg bg-amber-50 border-l-4 border-solar-amber shadow-sm border border-amber-200/80">
+<div class="flex items-start gap-2.5">
+<span class="material-symbols-outlined text-solar-amber text-[20px] shrink-0 mt-0.5">lightbulb</span>
+<p class="font-disclaimer-legal text-disclaimer-legal text-amber-950 leading-snug">
+<span class="font-label-caps text-solar-amber uppercase tracking-wider block font-bold mb-0.5">Core Sizing Metric:</span>
+                    "Every solar calculator tells you what a roof can hold. <strong class="text-amber-900 font-bold">PV Maps tells you what a bill can use.</strong>"
+                  </p>
+</div>
+</div>
+<!-- COMPARATIVE CAPACITY TRI-CARD -->
+<div class="flex flex-col gap-2.5">
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-text-muted font-bold">CAPACITY COMPARISON AUDIT</span>
+<span class="font-label-caps text-label-caps text-feeder-cyan font-bold bg-sky-50 px-2 py-0.5 rounded border border-sky-200">TNERC COMPLIANT</span>
+</div>
+<!-- Card A: Physical Roof Max -->
+<div class="p-3 rounded-lg bg-slate-50 border border-slate-200 hover:border-slate-300 transition-all flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-text-muted uppercase">Physical Roof Ceiling</span>
+<span class="font-headline-md text-text-primary font-bold">6.4 <span class="text-body-sm font-normal text-text-muted">kWp</span></span>
+<span class="font-disclaimer-legal text-disclaimer-legal text-text-muted mt-0.5">48.2 m² usable area (16× 400W Monoperc panels)</span>
+</div>
+<div class="text-right flex flex-col items-end">
+<span class="px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-label-caps text-label-caps font-semibold">UNCONSTRAINED</span>
+<span class="font-mono-metric-base text-mono-metric-base text-constraint-crimson font-bold text-xs mt-1">-54% CAPEX WASTED</span>
+</div>
+</div>
+<!-- Card B: Sanctioned-Load Max -->
+<div class="p-3 rounded-lg bg-slate-50 border border-slate-200 hover:border-slate-300 transition-all flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-text-muted uppercase">TNPDCL Sanctioned Cap</span>
+<span class="font-headline-md text-text-primary font-bold">3.0 <span class="text-body-sm font-normal text-text-muted">kW</span></span>
+<span class="font-disclaimer-legal text-disclaimer-legal text-text-muted mt-0.5">1-Phase LT Domestic threshold (TNERC Sec 4.1)</span>
+</div>
+<div class="text-right flex flex-col items-end">
+<span class="px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-label-caps text-label-caps font-semibold">GRID HARD CAP</span>
+<span class="font-mono-metric-base text-mono-metric-base text-text-secondary text-xs mt-1">₹2,800 ENHANCE REQ.</span>
+</div>
+</div>
+<!-- Card C: Bill-Aware Recommended (The Star Component) -->
+<div class="p-3.5 rounded-lg bg-amber-50/70 border-2 border-solar-amber shadow-sm relative overflow-hidden">
+<div class="absolute top-0 right-0 bg-solar-amber text-white font-label-caps text-[9px] font-bold px-2 py-0.5 rounded-bl tracking-wider">
+                    OPTIMAL ECONOMIC FIT
+                  </div>
+<div class="flex items-baseline justify-between pr-14">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-solar-amber font-bold uppercase">PV Maps Bill-Sized Fit</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-mono-metric-lg text-mono-metric-lg text-text-primary text-2xl font-bold">2.8</span>
+<span class="font-body-sm text-body-sm text-text-secondary font-semibold">kWp</span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-headline-md text-grid-emerald font-bold">₹24,800</span>
+<span class="font-disclaimer-legal text-disclaimer-legal text-text-muted block">Est. Annual Return</span>
+</div>
+</div>
+<div class="mt-2.5 pt-2 border-t border-amber-200 flex items-center justify-between text-disclaimer-legal font-disclaimer-legal">
+<span class="text-text-secondary flex items-center gap-1 font-medium">
+<span class="material-symbols-outlined text-grid-emerald text-[15px]">verified</span>
+                      Zero grid export curtailment penalty
+                    </span>
+<span class="text-solar-amber font-mono-metric-base text-xs font-bold bg-white px-1.5 py-0.5 rounded border border-amber-300">3.4 Yrs Payback</span>
+</div>
+</div>
+</div>
+<!-- Spatial & Obstruction Deduction Ledger -->
+<div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
+<span class="font-label-caps text-label-caps text-text-muted font-bold block mb-2">GEOSPATIAL OBSTRUCTION AUDIT (68.0 m² BASE)</span>
+<div class="grid grid-cols-3 gap-2 text-center">
+<div class="p-1.5 rounded bg-white border border-slate-200">
+<span class="font-mono-metric-base text-constraint-crimson font-bold text-xs block">-8.0 m²</span>
+<span class="font-disclaimer-legal text-disclaimer-legal text-text-muted">Staircase Cabin</span>
+</div>
+<div class="p-1.5 rounded bg-white border border-slate-200">
+<span class="font-mono-metric-base text-constraint-crimson font-bold text-xs block">-4.0 m²</span>
+<span class="font-disclaimer-legal text-disclaimer-legal text-text-muted">Water Tank</span>
+</div>
+<div class="p-1.5 rounded bg-white border border-slate-200">
+<span class="font-mono-metric-base text-constraint-crimson font-bold text-xs block">-7.8 m²</span>
+<span class="font-disclaimer-legal text-disclaimer-legal text-text-muted">Parapet Shadow</span>
+</div>
+</div>
+<div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-200 font-label-caps text-label-caps">
+<span class="text-text-secondary font-medium">NET ACTIVE SOLAR ROOF:</span>
+<span class="text-feeder-cyan font-bold">48.2 m² (70.8% USABLE)</span>
+</div>
+</div>
+<!-- Action CTA Strip -->
+<div class="flex items-center gap-2 pt-1">
+<button class="flex-1 py-2.5 px-3 rounded-lg bg-solar-amber hover:bg-amber-600 text-white font-label-caps text-label-caps font-bold transition-colors flex items-center justify-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+                  VALIDATE TNPDCL SUBSIDY (PM SURYA GHAR)
+                </button>
+<button class="p-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-text-secondary border border-slate-200 transition-colors shadow-sm" title="Download Pre-Design Dossier">
+<span class="material-symbols-outlined text-[18px]">description</span>
+</button>
+</div>
+</div>
+<!-- RIGHT COLUMN: Bill Intelligence & Dynamic Value Sizing Curve -->
+<div class="w-full lg:w-[490px] flex flex-col gap-3.5 bg-white/95 backdrop-blur-xl p-5 rounded-xl shadow-xl border border-slate-200">
+<!-- Header with Bill OCR Extraction Badge -->
+<div class="flex items-center justify-between pb-2 border-b border-slate-200">
+<div class="flex items-center gap-2">
+<span class="h-2 w-2 rounded-full bg-grid-emerald"></span>
+<span class="font-headline-md text-text-primary text-sm font-bold">Bill-to-Generation Alignment</span>
+</div>
+<span class="font-label-caps text-label-caps text-grid-emerald bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1 font-bold">
+<span class="material-symbols-outlined text-[13px]">document_scanner</span>
+                  OCR CONFIRMED: 98%
+                </span>
+</div>
+<!-- Tabbed Profile Inspector -->
+<div class="flex items-center gap-1.5 border-b border-slate-200 pb-2">
+<button class="px-2.5 py-1 rounded bg-slate-900 text-white font-label-caps text-label-caps font-bold">
+                  TNPDCL BILL SLABS
+                </button>
+<button class="px-2.5 py-1 rounded text-text-muted hover:text-text-primary font-label-caps text-label-caps transition-colors">
+                  DAYTIME LOAD PROFILE
+                </button>
+<button class="px-2.5 py-1 rounded text-text-muted hover:text-text-primary font-label-caps text-label-caps transition-colors">
+                  FEEDER HEALTH (11kV)
+                </button>
+</div>
+<!-- Extracted Bill Data Cards -->
+<div class="grid grid-cols-3 gap-2">
+<div class="p-2 rounded-lg bg-slate-50 border border-slate-200">
+<span class="font-disclaimer-legal text-disclaimer-legal text-text-muted block">Consumer Service No.</span>
+<span class="font-mono-metric-base text-text-primary text-xs font-bold block mt-0.5">08-214-004-182</span>
+<span class="font-disclaimer-legal text-[10px] text-text-muted">Vellore North EDC</span>
+</div>
+<div class="p-2 rounded-lg bg-slate-50 border border-slate-200">
+<span class="font-disclaimer-legal text-disclaimer-legal text-text-muted block">Bi-Monthly Units</span>
+<span class="font-mono-metric-base text-text-primary text-xs font-bold block mt-0.5">190 Units</span>
+<span class="font-disclaimer-legal text-[10px] text-solar-amber font-semibold">95 kWh / Month</span>
+</div>
+<div class="p-2 rounded-lg bg-slate-50 border border-slate-200">
+<span class="font-disclaimer-legal text-disclaimer-legal text-text-muted block">Current Domestic Slab</span>
+<span class="font-mono-metric-base text-grid-emerald text-xs font-bold block mt-0.5">LT 1A (Tier-2)</span>
+<span class="font-disclaimer-legal text-[10px] text-text-muted">₹4.50/unit import</span>
+</div>
+</div>
+<!-- Daytime Load Signature Overview -->
+<div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-disclaimer-legal font-disclaimer-legal">
+<div class="flex items-center gap-2.5">
+<div class="h-7 w-7 rounded bg-sky-50 border border-sky-200 flex items-center justify-center text-feeder-cyan">
+<span class="material-symbols-outlined text-[17px]">air</span>
+</div>
+<div>
+<span class="text-text-primary font-bold block">Daytime Profile: Retired / WFH</span>
+<span class="text-text-muted">1.5T Inverter AC + 0.75kW Monobloc Pump</span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-mono-metric-base text-feeder-cyan text-xs font-bold">35%</span>
+<span class="text-text-muted block text-[10px]">Direct Solar Offset</span>
+</div>
+</div>
+<!-- VALUE CURVE ENGINE & INTERACTIVE SIZING GRAPH -->
+<div class="flex flex-col gap-1.5 p-3 rounded-lg bg-slate-50 border border-slate-200">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="font-label-caps text-label-caps text-text-primary font-bold">CANDIDATE SIZING VALUE CURVE</span>
+<span class="material-symbols-outlined text-text-muted text-[14px]" title="Marginal savings decay once beyond contracted load due to reduced export tariff">info</span>
+</div>
+<span class="font-disclaimer-legal text-disclaimer-legal text-constraint-crimson font-mono-metric-base font-bold bg-red-50 px-1.5 py-0.5 rounded border border-red-200">EXPORT DROP: ₹2.25/kWh</span>
+</div>
+<!-- Inline SVG Chart on Light Canvas -->
+<div class="relative w-full h-40 bg-white rounded-lg p-2 border border-slate-200 overflow-hidden shadow-inner">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 420 120">
+<defs>
+<lineargradient id="curveGradientLight" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#059669" stop-opacity="0.25"></stop>
+<stop offset="60%" stop-color="#d97706" stop-opacity="0.08"></stop>
+<stop offset="100%" stop-color="#dc2626" stop-opacity="0.02"></stop>
+</lineargradient>
+</defs>
+<!-- Subtle Light Grid Lines -->
+<line stroke="#e2e8f0" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="420" y1="30" y2="30"></line>
+<line stroke="#e2e8f0" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="420" y1="65" y2="65"></line>
+<line stroke="#e2e8f0" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="420" y1="100" y2="100"></line>
+<!-- Hard Cap Vertical Marker: 3.0 kW Sanctioned Load (at X=196) -->
+<line stroke="#dc2626" stroke-dasharray="3 3" stroke-width="1.5" x1="196" x2="196" y1="0" y2="120"></line>
+<text class="font-label-caps" fill="#b91c1c" font-size="8" font-weight="700" x="200" y="16">3.0 kW SANCTIONED CAP</text>
+<!-- Area Fill for Value Curve -->
+<path d="M 10 105 
+                             C 60 90, 100 50, 160 22 
+                             C 180 18, 196 20, 240 45 
+                             C 310 80, 360 88, 410 92 
+                             L 410 105 Z" fill="url(#curveGradientLight)"></path>
+<!-- The Sizing vs Return Line Curve -->
+<path d="M 10 105 
+                             C 60 90, 100 50, 160 22 
+                             C 180 18, 196 20, 240 45 
+                             C 310 80, 360 88, 410 92" fill="none" stroke="#059669" stroke-width="2.5"></path>
+<!-- Degraded Export Return Beyond 3.0 kW -->
+<path d="M 196 20 C 240 45, 310 80, 410 92" fill="none" stroke="#dc2626" stroke-dasharray="4 2" stroke-width="2"></path>
+<!-- The Golden Vertex: 2.8 kWp Recommended System -->
+<circle cx="178" cy="19" fill="#d97706" r="5" stroke="#ffffff" stroke-width="2"></circle>
+<circle class="animate-ping" cx="178" cy="19" fill="#f59e0b" fill-opacity="0.4" r="9"></circle>
+<!-- Highlight Label Box -->
+<rect fill="#ffffff" height="24" rx="3" stroke="#d97706" stroke-width="1.2" width="138" x="110" y="28"></rect>
+<text class="font-label-caps" fill="#0f172a" font-size="9" font-weight="700" x="115" y="44">SWEET SPOT: 2.8 kWp (₹24.8k/yr)</text>
+<!-- 6.4 kW Roof Max Point -->
+<circle cx="410" cy="92" fill="#94a3b8" r="3.5"></circle>
+<text class="font-label-caps" fill="#64748b" font-size="8" font-weight="600" x="330" y="112">6.4 kWp (OVERSIZED)</text>
+</svg>
+</div>
+<!-- Energy Split Stacked Bar (Self-Consumed vs Exported) -->
+<div class="flex flex-col gap-1 mt-1">
+<div class="flex items-center justify-between text-disclaimer-legal font-disclaimer-legal">
+<span class="text-text-secondary">Predicted Generation: <strong class="text-text-primary font-bold">4,000 kWh / yr</strong></span>
+<span class="text-text-muted">Based on 2.8 kWp System</span>
+</div>
+<div class="h-2.5 w-full bg-slate-200 rounded flex overflow-hidden">
+<div class="h-full bg-emerald-600 transition-all" style="width: 78%;" title="78% Direct Self-Consumption (Replaces ₹5.50-₹8.00 grid tariff)"></div>
+<div class="h-full bg-amber-500 transition-all" style="width: 22%;" title="22% Surplus Export (Credited at ₹2.25 TNERC APPC Rate)"></div>
+</div>
+<div class="flex items-center justify-between text-disclaimer-legal font-disclaimer-legal mt-0.5">
+<span class="text-emerald-700 flex items-center gap-1 font-semibold">
+<span class="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>3,120 kWh Self-Consumed
+                    </span>
+<span class="text-amber-700 flex items-center gap-1 font-semibold">
+<span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>880 kWh Grid Exported
+                    </span>
+</div>
+</div>
+</div>
+<!-- Dynamic Sizing Interactive Scrubber Slider -->
+<div class="p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col gap-2">
+<div class="flex items-center justify-between font-label-caps text-label-caps">
+<span class="text-text-muted font-bold">DYNAMIC SYSTEM SIZING SCRUBBER</span>
+<span class="text-solar-amber font-mono-metric-base text-sm font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200" id="slider-val">2.8 kWp</span>
+</div>
+<input class="w-full h-1.5 bg-slate-200 rounded appearance-none cursor-pointer accent-amber-600" id="capacity-slider" max="6.4" min="1.0" oninput="document.getElementById('slider-val').innerText = parseFloat(this.value).toFixed(1) + ' kWp'" step="0.2" type="range" value="2.8"/>
+<div class="flex justify-between text-disclaimer-legal font-disclaimer-legal text-text-muted">
+<span>1.0 kWp (Min)</span>
+<span class="text-solar-amber font-bold">2.8 kWp (Recommended)</span>
+<span>3.0 kWp (Cap)</span>
+<span>6.4 kWp (Roof Max)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- BOTTOM BAR: Mandatory Utility & Feasibility Regulatory Bar -->
+<div class="w-full flex items-center justify-between gap-4 pointer-events-auto bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-xl border border-slate-200 text-text-secondary text-disclaimer-legal font-disclaimer-legal shadow-md">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-solar-amber text-[19px] shrink-0">gavel</span>
+<span>
+<strong class="text-solar-amber font-bold">REGULATORY NOTICE:</strong> 
+                Grid connection is not verified. Official TNPDCL feasibility approval is required before solar installation. Phase 1 Bill-to-Roof Optimiser.
+              </span>
+</div>
+<div class="flex items-center gap-3 shrink-0">
+<a class="text-feeder-cyan hover:underline flex items-center gap-1 font-label-caps text-label-caps font-bold" href="#">
+                VIEW DT PRESSURE (VIT-04 FEEDER)
+                <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+</a>
+<span class="h-3 w-[1px] bg-slate-300"></span>
+<span class="font-label-caps text-label-caps text-text-muted">LATENCY: 42ms</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Clean Light Technical Footer -->
+<footer class="w-full bg-white border-t border-slate-200 py-4 px-5">
+<div class="w-full flex flex-col md:flex-row items-center justify-between gap-2 text-text-muted font-disclaimer-legal text-disclaimer-legal">
+<div>
+<span>DISCLAIMER: NOT OFFICIAL TNPDCL FEASIBILITY APPROVAL. PV Maps models regulatory caps (TNERC Grid Interactive Solar PV Regulations) and PostGIS cartographic estimations for Vellore urban pilot.</span>
+</div>
+<div class="flex items-center gap-4">
+<span>TAMIL NADU ENERGY PLATFORM</span>
+<span>GEOJSON EPSG:4326</span>
+<span>© 2024 PV MAPS INFRASTRUCTURE</span>
+</div>
+</div>
+</footer>
+</body></html>

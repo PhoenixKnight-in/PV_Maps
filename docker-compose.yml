@@ -1,0 +1,127 @@
+# ARCHITECTURE.md 9.1 — one command brings up the demo stack.
+#
+# The pipeline is NOT in the default set. It carries torch and CUDA, it is
+# multi-GB, and ARCHITECTURE.md 9.1 is explicit that it is never started during
+# a judging demo. It lives behind a profile so `docker compose up` cannot
+# accidentally start it.
+
+name: pvmaps
+
+services:
+  postgis:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pvmaps}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pvmaps}
+      POSTGRES_DB: ${POSTGRES_DB:-pvmaps}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pvmaps} -d ${POSTGRES_DB:-pvmaps}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------
+  # One-shot preparation, in order: schema, then pilot data. Both are
+  # idempotent, both run on every `up`, and `api` waits for them. ARCHITECTURE.md
+  # 9.1 promises that one command brings up the demo stack, and a stack whose
+  # database has no tables in it is not up.
+  #
+  # `migrate` runs from the api image: it already carries alembic and asyncpg,
+  # and the migration is the one thing the request path and the offline plane
+  # must agree about.
+  # ---------------------------------------------------------------------
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: ../docker/api.Dockerfile
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-pvmaps}:${POSTGRES_PASSWORD:-pvmaps}@postgis:5432/${POSTGRES_DB:-pvmaps}
+    depends_on:
+      postgis:
+        condition: service_healthy
+    restart: "no"
+
+  # Small image, sync driver, no CUDA -- see docker/seed.Dockerfile.
+  seed:
+    build:
+      context: ./backend
+      dockerfile: ../docker/seed.Dockerfile
+    command: ["seed"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-pvmaps}:${POSTGRES_PASSWORD:-pvmaps}@postgis:5432/${POSTGRES_DB:-pvmaps}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: ../docker/api.Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-pvmaps}:${POSTGRES_PASSWORD:-pvmaps}@postgis:5432/${POSTGRES_DB:-pvmaps}
+      # ARCHITECTURE.md 9.2: only the deployed web origin may call the API.
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-http://localhost:8080,http://localhost:5173}
+      PVMAPS_LOG_LEVEL: ${PVMAPS_LOG_LEVEL:-info}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      postgis:
+        condition: service_healthy
+      # Not just the database: /healthz counts pilot roofs and reports
+      # `schema_missing` or `no_pilot_data` until these have run, which is
+      # deliberate -- the browser falls back to its bundle rather than waiting on
+      # roof lookups that cannot succeed (ARCHITECTURE.md 9.3).
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      dockerfile: ../docker/web.Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------
+  # Offline preparation. Never runs during a demo. Start explicitly:
+  #   docker compose --profile pipeline run --rm pipeline <command>
+  # ---------------------------------------------------------------------
+  pipeline:
+    profiles: ["pipeline"]
+    build:
+      context: ./backend
+      dockerfile: ../docker/pipeline.Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-pvmaps}:${POSTGRES_PASSWORD:-pvmaps}@postgis:5432/${POSTGRES_DB:-pvmaps}
+    volumes:
+      - ./data:/data          # imagery tiles, surveyed pins, hand-corrections
+    depends_on:
+      postgis:
+        condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  pgdata:

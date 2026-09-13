@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PV Maps - Is this your roof?</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            primary: {
+              DEFAULT: '#0F766E',
+              dark: '#115E59',
+              light: '#CCFBF1',
+              tint: '#F0FDFA',
+            },
+            surface: '#FFFFFF',
+            background: '#F8FAFC',
+            border: '#E2E8F0',
+            textMain: '#0F172A',
+            textMuted: '#64748B',
+            textSub: '#475569',
+            amberNotice: '#FFFBEB',
+            amberBorder: '#F59E0B',
+            amberText: '#92400E',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .tnum { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body class="bg-[#F8FAFC] text-[#0F172A] antialiased flex flex-col items-center min-h-screen">
+  <!-- Mobile Container (390px max-w-sm) -->
+  <div class="w-full max-w-[390px] bg-white min-h-screen flex flex-col border-x border-[#E2E8F0] shadow-sm relative pb-8">
+
+    <!-- Top Minimal Utility Header -->
+    <header class="px-4 py-2.5 bg-white border-b border-[#E2E8F0] flex items-center justify-between z-20">
+      <div class="flex items-center gap-2">
+        <div class="w-5 h-5 bg-[#0F766E] rounded flex items-center justify-center text-white text-xs font-mono font-bold leading-none">
+          PV
+        </div>
+        <span class="font-bold text-sm tracking-tight text-[#0F172A]">PV Maps</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1]">
+          STEP 2 OF 4
+        </span>
+        <span class="text-xs text-[#64748B] font-mono">14 Gandhi Rd</span>
+      </div>
+    </header>
+
+    <!-- Title Subbar -->
+    <div class="px-4 py-2 bg-white border-b border-[#E2E8F0] flex items-baseline justify-between">
+      <h1 class="text-[15px] font-bold tracking-tight text-[#0F172A]">Is this your roof?</h1>
+      <span class="text-[11px] font-mono text-[#64748B] tnum">12.9692° N, 79.1559° E</span>
+    </div>
+
+    <!-- Map Area (Fills upper ~60% of viewport) -->
+    <div class="relative w-full h-[360px] bg-[#E2E8F0] overflow-hidden select-none">
+      <!-- High-res aerial satellite photography basemap -->
+      <img
+        src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTD5k68srGozq7e2n7ypC7pqCpPf7aF3sDKwcDRYLLoMCVX7HsfG5aHn5kfFWJyg5j1caGFQli3pez6KsOsuDmCOpjnsdgDtx4Vpkx3QiPPrGURO464BZpddxVvzTLemojAT9JO2HDOJXNUEZ1R5AgabqYywlA-FmaVUCFeMeGUtPyPoT1L_rkKepLjUnhnLn11WEQj5dFGFyujRQRZ0CShwuOQGp5VPUq-q6KiDubNZX1MoxQWflGGzrD8QxtsLXGZB4gR9xknU4"
+        alt="Satellite imagery of residential area in Tamil Nadu"
+        class="w-full h-full object-cover object-center"
+      />
+
+      <!-- Map Crosshair / Center grid overlay subtle lines -->
+      <div class="absolute inset-0 pointer-events-none opacity-20">
+        <div class="w-full h-full border border-black/10 grid grid-cols-4 grid-rows-4">
+          <div class="border-r border-b border-black/20"></div>
+          <div class="border-r border-b border-black/20"></div>
+          <div class="border-r border-b border-black/20"></div>
+          <div class="border-b border-black/20"></div>
+          <div class="border-r border-b border-black/20"></div>
+          <div class="border-r border-b border-black/20"></div>
+          <div class="border-r border-b border-black/20"></div>
+          <div class="border-b border-black/20"></div>
+          <div class="border-r border-b border-black/20"></div>
+          <div class="border-r border-b border-black/20"></div>
+          <div class="border-r border-b border-black/20"></div>
+          <div class="border-b border-black/20"></div>
+          <div class="border-r border-black/20"></div>
+          <div class="border-r border-black/20"></div>
+          <div class="border-r border-black/20"></div>
+          <div></div>
+        </div>
+      </div>
+
+      <!-- Outlined & Shaded Rooftop Polygon with Draggable Corner Handles -->
+      <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 390 360">
+        <defs>
+          <!-- Hatching for usable solar polygon -->
+          <pattern id="diagonalHatch" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="0" y2="8" stroke="#0F766E" stroke-width="1.2" stroke-opacity="0.25" />
+          </pattern>
+        </defs>
+
+        <!-- Shaded fill polygon -->
+        <polygon
+          points="145,188 248,124 294,196 192,260"
+          fill="#0F766E"
+          fill-opacity="0.32"
+          stroke="#0F766E"
+          stroke-width="2.5"
+          stroke-linejoin="round"
+        />
+
+        <!-- Pattern fill overlay for technical precision feel -->
+        <polygon
+          points="145,188 248,124 294,196 192,260"
+          fill="url(#diagonalHatch)"
+        />
+
+        <!-- Inner azimuth orientation indicator line -->
+        <line x1="219" y1="192" x2="202" y2="220" stroke="#0F766E" stroke-width="2" stroke-dasharray="2 2" />
+        <circle cx="219" cy="192" r="2.5" fill="#0F766E" />
+      </svg>
+
+      <!-- Draggable Corner Handles (Interactive UI representations) -->
+      <!-- Corner 1: Top-Left (145, 188) -->
+      <div class="absolute" style="left: calc(145px - 9px); top: calc(188px - 9px);">
+        <div class="w-[18px] h-[18px] bg-white border-2 border-[#0F766E] rounded-full shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing hover:scale-110 transition-transform">
+          <div class="w-1.5 h-1.5 bg-[#0F766E] rounded-full"></div>
+        </div>
+      </div>
+
+      <!-- Corner 2: Top-Right (248, 124) -->
+      <div class="absolute" style="left: calc(248px - 9px); top: calc(124px - 9px);">
+        <div class="w-[18px] h-[18px] bg-white border-2 border-[#0F766E] rounded-full shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing hover:scale-110 transition-transform">
+          <div class="w-1.5 h-1.5 bg-[#0F766E] rounded-full"></div>
+        </div>
+      </div>
+
+      <!-- Corner 3: Bottom-Right (294, 196) -->
+      <div class="absolute" style="left: calc(294px - 9px); top: calc(196px - 9px);">
+        <div class="w-[18px] h-[18px] bg-white border-2 border-[#0F766E] rounded-full shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing hover:scale-110 transition-transform">
+          <div class="w-1.5 h-1.5 bg-[#0F766E] rounded-full"></div>
+        </div>
+      </div>
+
+      <!-- Corner 4: Bottom-Left (192, 260) -->
+      <div class="absolute" style="left: calc(192px - 9px); top: calc(260px - 9px);">
+        <div class="w-[18px] h-[18px] bg-white border-2 border-[#0F766E] rounded-full shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing hover:scale-110 transition-transform">
+          <div class="w-1.5 h-1.5 bg-[#0F766E] rounded-full"></div>
+        </div>
+      </div>
+
+      <!-- Map HUD / Floating Metadata Badges -->
+      <!-- Address & Zoom Controls -->
+      <div class="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1.5 rounded border border-[#CBD5E1] shadow-sm flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-[#0F766E] animate-pulse"></span>
+        <span class="text-[11px] font-mono font-medium text-[#1E293B]">Katpadi, Vellore 632007</span>
+      </div>
+
+      <div class="absolute top-3 right-3 flex flex-col bg-white/95 backdrop-blur-sm rounded border border-[#CBD5E1] shadow-sm divide-y divide-[#E2E8F0]">
+        <button class="w-7 h-7 flex items-center justify-center text-xs font-mono font-bold text-[#334155] hover:bg-[#F1F5F9] active:bg-[#E2E8F0]">+</button>
+        <button class="w-7 h-7 flex items-center justify-center text-xs font-mono font-bold text-[#334155] hover:bg-[#F1F5F9] active:bg-[#E2E8F0]">−</button>
+      </div>
+
+      <!-- Map Compass & Scale overlay -->
+      <div class="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded border border-[#CBD5E1] text-[10px] font-mono text-[#475569] flex items-center gap-2">
+        <span class="font-bold text-[#0F766E]">N ↑</span>
+        <span class="border-l border-[#CBD5E1] pl-1.5">Scale: 1:250</span>
+      </div>
+
+      <!-- Pinpoint Tooltip above building -->
+      <div class="absolute top-[102px] left-[150px] transform -translate-x-1/2 bg-[#0F766E] text-white text-[10px] font-mono px-2 py-0.5 rounded shadow whitespace-nowrap">
+        Auto-detected footprint
+      </div>
+    </div>
+
+    <!-- Below the Map: Data Card & Controls -->
+    <div class="px-4 pt-3.5 pb-2 flex-1 flex flex-col justify-between space-y-3">
+
+      <!-- Compact Technical Data Card -->
+      <div class="bg-white rounded-lg border border-[#E2E8F0] shadow-sm divide-y divide-[#E2E8F0]">
+        <!-- 2 Column Metrics Display -->
+        <div class="grid grid-cols-2 divide-x divide-[#E2E8F0]">
+          <!-- Metric 1: Usable roof area -->
+          <div class="p-3">
+            <div class="text-[11px] font-medium text-[#64748B] uppercase tracking-wider">Usable roof area</div>
+            <div class="mt-1 flex items-baseline gap-1">
+              <span class="text-2xl font-bold font-mono text-[#0F172A] tnum">48</span>
+              <span class="text-xs font-mono text-[#475569]">sq m</span>
+            </div>
+            <!-- Range band directly underneath as HARD RULE -->
+            <div class="mt-1 text-[11px] font-mono text-[#0F766E] font-medium tnum bg-[#F0FDFA] inline-block px-1.5 py-0.5 rounded border border-[#CCFBF1]">
+              41 to 55 sq m
+            </div>
+          </div>
+
+          <!-- Metric 2: Roof allows -->
+          <div class="p-3">
+            <div class="text-[11px] font-medium text-[#64748B] uppercase tracking-wider">Roof allows</div>
+            <div class="mt-1 flex items-baseline gap-1">
+              <span class="text-2xl font-bold font-mono text-[#0F172A] tnum">7.2</span>
+              <span class="text-xs font-mono text-[#475569]">kWp</span>
+            </div>
+            <!-- Range band directly underneath as HARD RULE -->
+            <div class="mt-1 text-[11px] font-mono text-[#0F766E] font-medium tnum bg-[#F0FDFA] inline-block px-1.5 py-0.5 rounded border border-[#CCFBF1]">
+              6.1 to 8.2 kWp
+            </div>
+          </div>
+        </div>
+
+        <!-- Tariff slab context note inside card -->
+        <div class="px-3 py-2 bg-[#F8FAFC] flex items-center justify-between text-[11px] font-mono text-[#64748B]">
+          <span>Sanctioned Load Cap: <strong class="text-[#0F172A] tnum">4.0 kW</strong></span>
+          <span class="text-[#0F766E]">LT-1A Eligible</span>
+        </div>
+      </div>
+
+      <!-- Amber-bordered Provisional Notice -->
+      <div class="rounded-md border border-[#F59E0B] bg-[#FFFBEB] p-3 flex gap-2.5 items-start">
+        <svg class="w-4 h-4 text-[#D97706] flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.63-1.516 2.63H3.72c-1.347 0-2.189-1.463-1.516-2.63L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+        </svg>
+        <p class="text-[12px] leading-relaxed text-[#92400E] font-normal">
+          We traced this roof automatically. Drag the corners if it is wrong — your correction is used, not ours.
+        </p>
+      </div>
+
+      <!-- Two Action Buttons -->
+      <div class="space-y-2 pt-1">
+        <!-- Primary Action -->
+        <button class="w-full bg-[#0F766E] hover:bg-[#115E59] active:bg-[#134E4A] text-white font-medium py-3 px-4 rounded-md text-sm transition-colors flex items-center justify-center gap-2 shadow-sm font-sans">
+          <span>This is right, continue</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+          </svg>
+        </button>
+
+        <!-- Secondary Action -->
+        <button class="w-full bg-white hover:bg-[#F8FAFC] active:bg-[#F1F5F9] text-[#334155] border border-[#CBD5E1] font-medium py-2.5 px-4 rounded-md text-sm transition-colors flex items-center justify-center gap-2 font-sans">
+          <svg class="w-4 h-4 text-[#64748B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span>Redraw the outline</span>
+        </button>
+      </div>
+
+      <!-- Footnote meta -->
+      <div class="text-center pt-1">
+        <p class="text-[10px] font-mono text-[#94A3B8]">
+          PV MAPS V2.4 (TN) • NO HARDWARE BROKERING
+        </p>
+      </div>
+
+    </div>
+
+  </div>
+</body>
+</html>

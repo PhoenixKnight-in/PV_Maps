@@ -1,0 +1,63 @@
+{
+  "version": "tnerc-2025-draft",
+  "effective_from": "2025-07-01",
+  "discom": "TNPDCL",
+  "verification_status": "CONTESTED",
+  "notes": [
+    "PRD 10 (must verify) flags dt_hosting_cap_pct as unresolved: one source cites 90% of DT capacity, another 30%.",
+    "This file exists so that number is a versioned parameter, never a constant in code (NFR-4).",
+    "If challenged live: change dt_hosting_cap_pct.value to 30 and re-solve. Scarcity increases, the allocation delta GROWS, and the product matters more. That is a slide, not a save."
+  ],
+
+  "dt_hosting_cap_pct": {
+    "value": 90.0,
+    "lo": 30.0,
+    "hi": 90.0,
+    "source": "inferred",
+    "confidence": 0.4,
+    "note": "Sources conflict. Read the primary TNERC GISS regulation before the demo. PRD 10 (must verify)."
+  },
+
+  "sanctioned_load_cap_enforced": {
+    "value": true,
+    "source": "published",
+    "confidence": 1.0,
+    "note": "Plant kW <= sanctioned load of the service connection. PRD 2.1 constraint #2."
+  },
+
+  "gnm_requires_same_consumer_name": {
+    "value": true,
+    "source": "published",
+    "confidence": 0.9,
+    "note": "TN GNM requires all service connections in the SAME person's name. Third-party sharing not permitted. PRD 10 (must verify) - do not pitch a peer-to-peer roof marketplace."
+  },
+
+  "vnm_restricted_to_institutions": {
+    "value": true,
+    "source": "published",
+    "confidence": 0.9,
+    "note": "TN VNM restricted to DISCOM / government / local bodies. The institutional path is the legal one."
+  },
+
+  "k_anonymity_min_bills": {
+    "value": 5,
+    "source": "published",
+    "confidence": 1.0,
+    "note": "NFR-1: suppress DT-level aggregates computed from fewer than this many bills."
+  },
+
+  "allocator": {
+    "kwp_step": "0.5",
+    "default_weight_private": "1.0",
+    "note": "PRD 12.3 OPEN: is the default view consumer-facing (w=1.0, private rupees) or policy-facing (w=0.0, subsidy avoided)? Currently consumer-facing, matching demo beat 2."
+  },
+
+  "yield_band_kwh_per_kwp_yr": {
+    "value": 1550.0,
+    "lo": 1500.0,
+    "hi": 1600.0,
+    "source": "published",
+    "confidence": 0.8,
+    "note": "Published inland-TN band. PRD 10 (acceptance criteria): pvlib output falling outside this means the physics is wrong."
+  }
+}

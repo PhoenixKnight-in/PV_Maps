@@ -1,0 +1,169 @@
+[project]
+name = "pvmaps"
+version = "0.1.0"
+description = "Bill-to-Roof solar sizing for Tamil Nadu"
+requires-python = ">=3.12"
+
+# Core = the pure calculation modules (ARCHITECTURE.md 5.1): tariff engine,
+# self-consumption model, sizing optimiser, subsidy calculator. These must stay
+# installable on a laptop with no database, no GPU and no network -- that is
+# what makes build-order items 1 and 2 possible before any infrastructure runs.
+dependencies = [
+    "pydantic>=2.9",
+]
+
+[dependency-groups]
+# ---------------------------------------------------------------------------
+# Web request path. Never imports torch, pvlib, rasterio or geopandas.
+# ---------------------------------------------------------------------------
+api = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30",
+    "geoalchemy2>=0.15",
+    "alembic>=1.14",
+    "python-multipart>=0.0.12",   # POST /v1/bill-extract
+    "structlog>=24.4",
+    "orjson>=3.10",
+]
+
+# Optional bill extraction (ARCHITECTURE.md 4.3). Convenience, not product
+# logic -- manual entry always works, so this group is genuinely optional.
+extract = [
+    "pillow>=11.0",
+    "pypdf>=5.1",
+    "rapidocr-onnxruntime>=1.4",
+]
+
+# ---------------------------------------------------------------------------
+# Database preparation: migrations are run from the api image, and the seeder
+# needs only a synchronous driver and a CLI. Its own group, and its own small
+# image (docker/seed.Dockerfile), because the alternative is asking whoever
+# recreates the demo database at 2am to first build a multi-GB CUDA image in
+# order to write fifteen rows.
+#
+# `pipeline` includes both of these packages, so the pipeline image can still
+# seed; this group is the subset that does not need a GPU.
+# ---------------------------------------------------------------------------
+seed = [
+    "typer>=0.15",
+    "psycopg[binary]>=3.2",
+]
+
+# ---------------------------------------------------------------------------
+# Offline preparation. GPU, multi-GB. Only in docker/pipeline.Dockerfile.
+# ---------------------------------------------------------------------------
+pipeline = [
+    "typer>=0.15",
+    "pvlib>=0.11",
+    "rasterio>=1.4",
+    "shapely>=2.0",
+    "geopandas>=1.0",
+    "numpy>=2.1",
+    "pandas>=2.2",
+    "psycopg[binary]>=3.2",       # sync driver: batch writes, not the read path
+    "torch>=2.5",
+    "torchvision>=0.20",
+    # SAM2 is installed from git in the pipeline image, not resolved here.
+]
+
+# ---------------------------------------------------------------------------
+# Phase 2 only -- the DT quota allocator (ARCHITECTURE.md 11).
+# Built and tested, but reachable from no Phase 1 route. Kept out of the API
+# image: CP-SAT is ~100 MB and the Phase 1 API has no allocation endpoint.
+# ---------------------------------------------------------------------------
+phase2 = [
+    "ortools>=9.11",
+]
+
+dev = [
+    { include-group = "api" },
+    { include-group = "phase2" },
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "hypothesis>=6.115",
+    "httpx>=0.28",
+    "ruff>=0.8",
+    "mypy>=1.13",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pvmaps"]
+
+# NFR-4 requires the versioned rule packs to be deployed alongside the code that
+# reads them, and they are: `packages` above ships every file under src/pvmaps,
+# JSON included -- verified by tests/test_packaging.py rather than assumed.
+#
+# There was a `force-include` of src/pvmaps/config here, which added those files a
+# second time and made `hatchling` refuse to build the wheel at all ("A second
+# file is being added to the wheel archive at the same path"). An editable install
+# never hits that path, so every test and every `uv sync` passed while
+# `uv build` -- and any non-editable install -- was broken.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["error::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src/pvmaps"]
+
+# Third-party packages with no stubs, or that are not installed in the
+# environment mypy runs in. The `pipeline` and `extract` groups are deliberately
+# absent from the API image and from a calculation-only checkout (see the
+# dependency-group comments above), so mypy must not treat their absence as an
+# error -- tests/test_architecture.py is what enforces that they stay absent
+# from the request path.
+[[tool.mypy.overrides]]
+module = [
+    "ortools.*",
+    "geoalchemy2.*",
+    # extract group -- optional bill reading
+    "rapidocr_onnxruntime.*",
+    "pypdf.*",
+    "PIL.*",
+    # pipeline group -- offline plane only
+    "pvlib.*",
+    "pandas.*",
+    "shapely.*",
+    "pyproj.*",
+    "rasterio.*",
+    "geopandas.*",
+    "torch.*",
+    "sam2.*",
+    "typer.*",
+    "psycopg.*",
+    # scripts/ is not a package; the CLI adds it to sys.path at call time
+    "build_demo_fallback",
+]
+ignore_missing_imports = true
+
+# typer's decorators are untyped once the module resolves to Any, which strict
+# mode reports on every command. The commands themselves are annotated; it is the
+# decorator that cannot be, so the check is disabled for this module only.
+[[tool.mypy.overrides]]
+module = ["pvmaps.pipeline.cli"]
+disallow_untyped_decorators = false
+
+# CP-SAT's model methods exist under two spellings at runtime -- NewIntVar and
+# new_int_var -- but ortools ships no py.typed, so mypy analyses its source and
+# sees only the ones defined statically. The PascalCase spelling is the one that
+# works across the whole >=9.11 range this project allows, so the call sites keep
+# it and the check is narrowed to the single Phase 2 module that makes them.
+[[tool.mypy.overrides]]
+module = ["pvmaps.phase2.allocator.solve"]
+disable_error_code = ["attr-defined"]

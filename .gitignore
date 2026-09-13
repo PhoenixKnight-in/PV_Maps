@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Env
+.env
+.env.local
+
+# Offline-plane inputs and outputs -- large, regenerable, and some of it is
+# licensed imagery that must not be redistributed.
+data/
+*.tif
+*.tiff
+*.mbtiles
+checkpoints/
+*.pt
+*.pth
+
+# NFR-1 / ARCHITECTURE.md 8: bill images are processed in memory and never
+# persisted. If one appears on disk something is wrong -- keep it out of git
+# regardless.
+*bill*.jpg
+*bill*.jpeg
+*bill*.png
+*bill*.pdf
+
+.DS_Store

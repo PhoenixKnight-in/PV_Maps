@@ -1,0 +1,80 @@
+{
+  "version": "tn-inland-2025",
+  "effective_from": "2025-07-01",
+  "region": "Inland Tamil Nadu (Vellore pilot)",
+  "currency": "INR",
+  "verification_status": "UNVERIFIED_AGAINST_PRIMARY_SOURCE",
+  "notes": [
+    "ARCHITECTURE.md 7: the API must return RANGES whenever the bill lacks interval-meter data, and must never present a self-consumption estimate as an observed fact. Every entry here is therefore a band, not a point.",
+    "A band of [x, x] is a claim of certainty. Do not write one unless the value really is known.",
+    "PRD 10 (acceptance criteria): pvlib output falling outside specific_yield is evidence the physics is wrong, not evidence to widen this band."
+  ],
+
+  "specific_yield_kwh_per_kwp_yr": {
+    "lo": 1500,
+    "hi": 1600,
+    "source": "published",
+    "note": "Published inland-TN band (PRD 10 (acceptance criteria)). Replaced per-building by the pvlib pipeline once roof_analyses is populated; this is the fallback."
+  },
+
+  "area_per_kwp_m2": {
+    "lo": 9.0,
+    "hi": 12.0,
+    "source": "inferred",
+    "note": "Shadow-free roof area one kWp occupies, INCLUDING inter-row spacing and access walkways. usable_area_m2 is already net of obstructions but not of array packing, so the packing loss lives here. The lo bound is the Indian industry rule of thumb (1 kW per 100 sq ft = 9.29 m2); the hi bound covers a flat roof with generous walkways and a parapet setback. Roof maximum is computed from the HI bound - see sizing.capacity.roof_max_kwp for why the conservative direction is the correct one for a cap. Replace with measured module dimensions and a real array layout before quoting a roof maximum to an installer."
+  },
+
+  "solar_servable_fraction": {
+    "note": "Fraction of a household's consumption that rooftop solar can actually displace. Deliberately NOT called 'daytime fraction': it already folds in the imperfect overlap between the generation curve and the load curve, so it is one honest assumption instead of two invented ones multiplied together. Bands are wide because without an interval meter they must be.",
+    "archetypes": {
+      "EMPTY_WEEKDAYS":  { "lo": 0.10, "hi": 0.25, "label": "Nobody home during working hours" },
+      "PARTIAL":         { "lo": 0.25, "hi": 0.45, "label": "Someone home part of the day" },
+      "HOME_ALL_DAY":    { "lo": 0.40, "hi": 0.60, "label": "Home all day (WFH, retired, joint family)" },
+      "DAYTIME_HEAVY":   { "lo": 0.55, "hi": 0.75, "label": "Daytime AC, water pump, or shop load" }
+    },
+    "modifiers": {
+      "DAYTIME_AC_PLANNED":   { "lo": 0.05,  "hi": 0.12,  "note": "New daytime cooling load raises servable fraction" },
+      "EV_CHARGED_AT_NIGHT":  { "lo": -0.12, "hi": -0.04, "note": "Night load grows; solar cannot serve it" },
+      "EV_CHARGED_BY_DAY":    { "lo": 0.06,  "hi": 0.15,  "note": "Only if the vehicle is actually home by day" }
+    },
+    "floor": 0.05,
+    "ceiling": 0.90
+  },
+
+  "export_rate_inr_per_kwh": {
+    "lo": 0.00,
+    "hi": 0.00,
+    "source": "inferred",
+    "note": "DELIBERATE ZERO. TN net-metering export compensation is a separate regulated rate, not the retail slab rate, and it has not been verified for this tariff period. Valuing export at the retail average is precisely the error that inflates oversized systems (see test_average_tariff_overstates_only_via_export). Until the primary order is read, exported units are worth nothing in this model and the UI must say so. Raising this band without a source is an overclaim."
+  },
+
+  "installed_cost_inr_per_kwp": {
+    "lo": 45000,
+    "hi": 60000,
+    "source": "inferred",
+    "note": "Indicative residential turnkey range. Replace with real Vellore installer quotes before quoting payback to anyone."
+  },
+
+  "annual_degradation_pct": {
+    "lo": 0.5,
+    "hi": 0.8,
+    "source": "published",
+    "note": "Typical crystalline-silicon linear degradation."
+  },
+
+  "system_lifetime_years": 25,
+
+  "discount_rate_pct": {
+    "lo": 6.0,
+    "hi": 9.0,
+    "source": "inferred",
+    "note": "Household opportunity cost of capital. Drives NPV; surface it in the assumptions panel."
+  },
+
+  "annual_om_cost_inr_per_kwp": {
+    "lo": 600,
+    "hi": 1200,
+    "source": "inferred",
+    "note": "Cleaning and inverter reserve. TN soiling is not negligible."
+  }
+}
