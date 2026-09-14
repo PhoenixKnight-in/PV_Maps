@@ -39,7 +39,15 @@ export function calculateUnitsFromAmount(b, category = "DOMESTIC") {
   return Math.round(1000 + (numB - 6635) / 11.55);
 }
 
-export default function BillInputForm({ value, onChange, errors, onLocateAddress }) {
+export default function BillInputForm({
+  value,
+  onChange,
+  errors,
+  onLocateAddress,
+  locationResolution,
+  onConfirmLocation,
+  onRequestUserGps,
+}) {
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState(null);
   const [extracted, setExtracted] = useState([]);
@@ -91,8 +99,8 @@ export default function BillInputForm({ value, onChange, errors, onLocateAddress
       onChange({ ...value, ...patch });
       setExtracted(patch.extracted_fields ?? []);
       setWarnings(patch.warnings ?? []);
-      if (patch.bill_address && onLocateAddress) {
-        onLocateAddress(patch.bill_address);
+      if (onLocateAddress) {
+        onLocateAddress(patch);
       }
     } catch {
       // Extraction failing must never block the calculation.
@@ -229,6 +237,160 @@ export default function BillInputForm({ value, onChange, errors, onLocateAddress
           </p>
         </div>
 
+        {/* Meter Consumption Breakdown */}
+        {value.final_reading != null && value.initial_reading != null && (
+          <div className="rounded border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="caption font-semibold text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
+                📟 Meter Consumption Verified
+              </span>
+              <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100">
+                Meter #{value.meter_number || "—"}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 text-xs font-mono">
+              <div className="bg-white/60 dark:bg-neutral-900/60 p-1.5 rounded border border-emerald-500/20">
+                <span className="text-[10px] text-ink-muted block">Final</span>
+                <span className="font-bold">{value.final_reading}</span>
+              </div>
+              <div className="bg-white/60 dark:bg-neutral-900/60 p-1.5 rounded border border-emerald-500/20">
+                <span className="text-[10px] text-ink-muted block">Initial</span>
+                <span className="font-bold">{value.initial_reading}</span>
+              </div>
+              <div className="bg-white/60 dark:bg-neutral-900/60 p-1.5 rounded border border-emerald-500/20">
+                <span className="text-[10px] text-ink-muted block">MF × Delta</span>
+                <span className="font-bold text-emerald-700 dark:text-emerald-300">
+                  {value.meter_consumption ?? value.billed_units_kwh} units
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Financial breakdown */}
+        {value.energy_charges != null && (
+          <div className="flex items-center justify-between text-[11px] font-mono px-2 py-1 rounded bg-ink/5 text-ink-sub">
+            <span>Energy: ₹{value.energy_charges}</span>
+            {value.government_subsidy != null && (
+              <span className="text-emerald-600 dark:text-emerald-400">
+                Subsidy: -₹{value.government_subsidy}
+              </span>
+            )}
+            <span className="font-bold text-ink">Net: ₹{value.net_payable || value.bill_amount}</span>
+          </div>
+        )}
+
+        {/* 4-Level Location Resolution & Verification Card */}
+        {locationResolution && (
+          <div
+            className={`rounded border p-2.5 space-y-2 ${
+              locationResolution.level === 1 || locationResolution.level === 2
+                ? "border-emerald-500/40 bg-emerald-50/40 dark:bg-emerald-950/20"
+                : locationResolution.requires_user_confirmation
+                ? "border-amber-500/40 bg-amber-50/40 dark:bg-amber-950/20"
+                : "border-sky-500/40 bg-sky-50/40 dark:bg-sky-950/20"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold">
+                {locationResolution.level === 1 && "⚡ Level 1: TNPDCL GIS Lookup"}
+                {locationResolution.level === 2 && "⚡ Level 2: Meter Repository"}
+                {locationResolution.level === 3 && "📍 Level 3: Address Geocoding"}
+                {locationResolution.level === 4 && "🛰️ Level 4: User-Confirmed"}
+              </span>
+              <span
+                className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                  locationResolution.confidence >= 0.85
+                    ? "bg-emerald-200 text-emerald-900 dark:bg-emerald-800 dark:text-emerald-100"
+                    : "bg-amber-200 text-amber-900 dark:bg-amber-800 dark:text-amber-100"
+                }`}
+              >
+                {Math.round(locationResolution.confidence * 100)}% Confidence
+              </span>
+            </div>
+
+            {/* Score breakdown tags */}
+            {locationResolution.score_breakdown && (
+              <div className="flex flex-wrap gap-1 text-[10px] font-mono text-ink-muted">
+                {locationResolution.score_breakdown.building_match > 0 && (
+                  <span className="bg-ink/5 px-1 rounded text-emerald-700 dark:text-emerald-300">
+                    Building: +{locationResolution.score_breakdown.building_match}
+                  </span>
+                )}
+                {locationResolution.score_breakdown.street_match > 0 && (
+                  <span className="bg-ink/5 px-1 rounded text-sky-700 dark:text-sky-300">
+                    Street: +{locationResolution.score_breakdown.street_match}
+                  </span>
+                )}
+                {locationResolution.score_breakdown.locality_match > 0 && (
+                  <span className="bg-ink/5 px-1 rounded text-sky-700 dark:text-sky-300">
+                    Locality: +{locationResolution.score_breakdown.locality_match}
+                  </span>
+                )}
+                {locationResolution.score_breakdown.section_match > 0 && (
+                  <span className="bg-ink/5 px-1 rounded text-purple-700 dark:text-purple-300">
+                    Section: +{locationResolution.score_breakdown.section_match}
+                  </span>
+                )}
+                {locationResolution.score_breakdown.pin_match > 0 && (
+                  <span className="bg-ink/5 px-1 rounded text-amber-700 dark:text-amber-300">
+                    PIN: +{locationResolution.score_breakdown.pin_match}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <p className="text-[11px] text-ink-sub leading-tight">
+              {locationResolution.details}
+            </p>
+
+            {/* Distance check if user provided GPS */}
+            {locationResolution.user_distance_meters != null && (
+              <div className="flex items-center gap-1.5 text-xs font-mono">
+                <span className="text-ink-muted">GPS comparison:</span>
+                {locationResolution.user_distance_check === "likely" ? (
+                  <span className="text-emerald-700 dark:text-emerald-300 font-semibold">
+                    {locationResolution.user_distance_meters} m away — likely ✅
+                  </span>
+                ) : locationResolution.user_distance_check === "suspicious" ? (
+                  <span className="text-rose-700 dark:text-rose-300 font-semibold">
+                    {(locationResolution.user_distance_meters / 1000).toFixed(1)} km away — suspicious ❌
+                  </span>
+                ) : (
+                  <span className="text-amber-700 dark:text-amber-300">
+                    {locationResolution.user_distance_meters} m away
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Confirmation Callout and Actions if required */}
+            {locationResolution.requires_user_confirmation && (
+              <div className="pt-1.5 space-y-1.5 border-t border-amber-500/20">
+                <p className="text-[11px] text-amber-900 dark:text-amber-200 font-medium">
+                  Confidence is below 85%. Tap or drag the pin on the map to your exact roof, or verify with your device GPS.
+                </p>
+                <div className="flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={onRequestUserGps}
+                    className="flex-1 py-1.5 px-2 rounded bg-sky-600 hover:bg-sky-700 text-white text-xs font-medium flex items-center justify-center gap-1 cursor-pointer transition"
+                  >
+                    <span>📍 Verify with My GPS</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onConfirmLocation?.()}
+                    className="flex-1 py-1.5 px-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium flex items-center justify-center gap-1 cursor-pointer transition"
+                  >
+                    <span>🏠 Confirm Location</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Tamil Nadu Service Connection Identification Card */}
         <div className="rounded border border-amber-500/30 bg-amber-50/40 dark:bg-amber-950/20 p-2.5 space-y-2">
           <div className="flex items-center justify-between">
@@ -285,20 +447,17 @@ export default function BillInputForm({ value, onChange, errors, onLocateAddress
             </div>
           </div>
 
-          {(value.bill_address || value.consumer_address || value.section) && (
+          {(value.bill_address || value.consumer_address || value.section || value.consumer_number) && (
             <button
               type="button"
               onClick={() => {
-                const target =
-                  value.bill_address ||
-                  `${value.consumer_address || value.section}, ${value.circle || "Vellore"}, Tamil Nadu`;
-                onLocateAddress?.(target);
+                onLocateAddress?.(value);
               }}
               className="w-full mt-1.5 py-2 px-3 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white rounded text-xs font-medium flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer"
             >
-              <span>📍 Fly map to bill address:</span>
+              <span>📍 Locate Connection on Map:</span>
               <span className="truncate max-w-[200px] underline font-bold">
-                {value.consumer_address || value.bill_address || value.section}
+                {value.consumer_number || value.consumer_address || value.bill_address || value.section}
               </span>
             </button>
           )}

@@ -68,6 +68,30 @@ export interface GeocodeHit {
   kind: string | null;
 }
 
+export interface ScoreBreakdown {
+  building_match: number;
+  street_match: number;
+  locality_match: number;
+  pin_match: number;
+  section_match: number;
+  total_score: number;
+}
+
+export interface LocationResolveResult {
+  latitude: number;
+  longitude: number;
+  accuracy_meters: number;
+  confidence: number;
+  source: string;
+  requires_user_confirmation: boolean;
+  level: number;
+  display_name: string;
+  score_breakdown?: ScoreBreakdown;
+  user_distance_meters?: number | null;
+  user_distance_check?: string | null;
+  details: string;
+}
+
 export interface RoofCandidate {
   geometry: GeoJSON.Polygon;
   area_m2: number;
@@ -112,6 +136,52 @@ export const api = {
       (raw) => raw as GeocodeHit[],
       opts,
     ),
+
+  /**
+   * 4-Level Location Resolution:
+   * Level 1: TNPDCL GIS Lookup
+   * Level 2: Meter Repository
+   * Level 3: Multi-component Geocoding + Confidence Engine
+   * Level 4: User GPS / Map Confirmation
+   */
+  resolveLocation: (
+    data: {
+      service_number?: string;
+      meter_number?: string;
+      address?: string;
+      section?: string;
+      circle?: string;
+      user_lat?: number;
+      user_lon?: number;
+    },
+    opts?: CallOptions,
+  ) =>
+    request<LocationResolveResult>("/v1/locate/resolve", (raw) => raw as LocationResolveResult, {
+      method: "POST",
+      body: JSON.stringify(data),
+      ...opts,
+    }),
+
+  confirmLocation: (
+    data: {
+      service_number: string;
+      meter_number?: string;
+      consumer_name?: string;
+      section?: string;
+      circle?: string;
+      address?: string;
+      latitude: number;
+      longitude: number;
+      accuracy_meters?: number;
+      source?: string;
+    },
+    opts?: CallOptions,
+  ) =>
+    request<LocationResolveResult>("/v1/locate/confirm", (raw) => raw as LocationResolveResult, {
+      method: "POST",
+      body: JSON.stringify(data),
+      ...opts,
+    }),
 
   /**
    * Measure the roof under a point, live, on the GPU.

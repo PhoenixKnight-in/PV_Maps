@@ -126,12 +126,15 @@ export default function HomePage() {
     await measureAt(a.lat, a.lon);
   }
 
+  const [locationResolution, setLocationResolution] = useState(null);
+  const [userGps, setUserGps] = useState(null);
+
   async function locateFromBillAddress(addrStr) {
     if (!addrStr) return;
     try {
       let hits = await api.geocode(addrStr);
-      if ((!hits || hits.length === 0) && profile.section) {
-        const fallback = `${profile.section.replace(/[/\\]/g, " ")}, ${profile.circle || "Vellore"}, Tamil Nadu`;
+      if ((!hits || hits.length === 0) && form.section) {
+        const fallback = `${form.section.replace(/[/\\]/g, " ")}, ${form.circle || "Vellore"}, Tamil Nadu`;
         hits = await api.geocode(fallback);
       }
       if (hits && hits.length > 0) {
@@ -145,6 +148,88 @@ export default function HomePage() {
     } catch (e) {
       console.warn("Could not geocode bill address:", e);
     }
+  }
+
+  async function runLocationResolution(target, currentGps = null) {
+    if (!target) return;
+    const isObj = typeof target === "object";
+    const service_number = isObj ? target.consumer_number : form.consumer_number;
+    const meter_number = isObj ? target.meter_number : form.meter_number;
+    const address = isObj ? (target.bill_address || target.consumer_address) : target;
+    const section = isObj ? target.section : form.section;
+    const circle = isObj ? target.circle : form.circle;
+    const gps = currentGps || userGps;
+
+    try {
+      const res = await api.resolveLocation({
+        service_number,
+        meter_number,
+        address,
+        section,
+        circle,
+        user_lat: gps?.lat,
+        user_lon: gps?.lon,
+      });
+
+      setLocationResolution(res);
+      await selectAddress({
+        kind: "MAPPED",
+        label: res.display_name,
+        lat: res.latitude,
+        lon: res.longitude,
+      });
+    } catch (e) {
+      console.warn("4-Level location resolution fallback:", e);
+      if (address) {
+        await locateFromBillAddress(address);
+      }
+    }
+  }
+
+  async function handleConfirmLocation(customCoords = null) {
+    const lat = customCoords?.lat ?? measured?.lat ?? locationResolution?.latitude;
+    const lon = customCoords?.lon ?? measured?.lon ?? locationResolution?.longitude;
+    if (!lat || !lon) return;
+
+    try {
+      const confirmed = await api.confirmLocation({
+        service_number: form.consumer_number || "08-211-019-1233",
+        meter_number: form.meter_number,
+        consumer_name: form.consumer_name,
+        section: form.section,
+        circle: form.circle,
+        address: locationResolution?.display_name || form.bill_address,
+        latitude: lat,
+        longitude: lon,
+        accuracy_meters: customCoords?.accuracy ?? 8.0,
+        source: customCoords ? "USER_CONFIRMED_GPS" : "USER_MAP_PIN",
+      });
+      setLocationResolution(confirmed);
+    } catch (e) {
+      console.warn("Could not confirm location:", e);
+    }
+  }
+
+  function handleRequestUserGps() {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const coords = {
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        };
+        setUserGps(coords);
+        await runLocationResolution(form, coords);
+      },
+      (err) => {
+        alert("Could not retrieve GPS location: " + err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   }
 
   async function submit(e) {
@@ -196,13 +281,21 @@ export default function HomePage() {
       // string is a 422, not a stand-in for absent. Zod defaults it to "" to
       // keep the field present for the form, which means it has to be stripped
       // here rather than sent as a falsy value the server will reject.
-      const { building_id: bid, ...withoutBuilding } = parsed.data;
-      const payload = bid ? parsed.data : withoutBuilding;
-
-      const rec = await dataSource.createSizingRun({
-        ...payload,
+      const sizingPayload = {
+        monthly_units_kwh: Number(parsed.data.monthly_units_kwh),
+        sanctioned_load_kw: Number(parsed.data.sanctioned_load_kw),
+        occupancy: parsed.data.occupancy,
+        modifiers: parsed.data.modifiers ?? [],
         usable_area_m2_override: corrected,
-      });
+      };
+      const bid = parsed.data.building_id;
+      if (bid) {
+        sizingPayload.building_id = bid;
+      } else if (parsed.data.traced_roof) {
+        sizingPayload.traced_roof = parsed.data.traced_roof;
+      }
+
+      const rec = await dataSource.createSizingRun(sizingPayload);
 
       // Read the mode AFTER the call: a live request that timed out switches the
       // session to stored data on its way through, and the result screen has to
@@ -222,12 +315,13 @@ export default function HomePage() {
         },
       });
     } catch (err) {
+      console.error("Sizing calculation error:", err);
       setSubmitError(
         err instanceof NoStoredResultError
           ? "This pilot roof has no stored offline result. PV Maps publishes a " +
               "physical rooftop potential for it but no rupee figures, because the " +
               "consumption and tariff behind those figures are not known."
-          : "Could not calculate a recommendation. Please try again.",
+          : (err?.message || "Could not calculate a recommendation. Please try again."),
       );
     } finally {
       setSubmitting(false);
@@ -389,7 +483,10 @@ export default function HomePage() {
               value={form}
               onChange={setForm}
               errors={errors}
-              onLocateAddress={locateFromBillAddress}
+              onLocateAddress={runLocationResolution}
+              locationResolution={locationResolution}
+              onConfirmLocation={handleConfirmLocation}
+              onRequestUserGps={handleRequestUserGps}
             />
             <DaytimeUseForm value={form} onChange={setForm} />
 

@@ -64,6 +64,18 @@ _BILL_AMOUNT = re.compile(
     r"(?:Net\s*Payable\s*Amt|Bill\s*Amount)\s*(?:[^\n0-9]{0,20})?([0-9]{1,3}(?:,[0-9]{2,3})*(?:\.[0-9]{2})?|[0-9]+(?:\.[0-9]{2})?)",
     re.IGNORECASE,
 )
+_METER_NO = re.compile(r"\bMeter\s*(?:No|Number)?\s*[:\-=]?\s*([A-Za-z0-9]+)\b", re.IGNORECASE)
+_READINGS_TABLE = re.compile(
+    r"\bREADING\s+([0-9]+(?:\.[0-9]+)?)\s+([0-9]+(?:\.[0-9]+)?)\s+([0-9]+(?:\.[0-9]+)?)\s+([0-9]+(?:\.[0-9]+)?)\b",
+    re.IGNORECASE,
+)
+_ENERGY_CHARGES = re.compile(
+    r"(?i)\bEnergy\s*Charges(?:\s+2716(?:\s+0000)?)?\s+([\d,]+\.\d{2})",
+)
+_GOVT_SUBSIDY = re.compile(
+    r"(?i)\bGovt\s*Subsidy(?:\s+2716(?:\s+0000)?)?\s+-?([\d,]+\.\d{2})",
+)
+_NET_PAYABLE = re.compile(r"(?i)\bNet\s*Payable\s*Amt[^\n\d]*([\d,]+(?:\.\d+)?)")
 
 
 def calculate_units_from_amount(b: float, category: str = "DOMESTIC") -> float:
@@ -155,6 +167,17 @@ class BillFields:
     bill_amount: Decimal | None = None
     is_bimonthly: bool = False
 
+    # Meter and granular charge fields
+    meter_number: str | None = None
+    initial_reading: Decimal | None = None
+    final_reading: Decimal | None = None
+    multiplying_factor: Decimal | None = None
+    meter_consumption: Decimal | None = None
+    energy_charges: Decimal | None = None
+    government_subsidy: Decimal | None = None
+    net_payable: Decimal | None = None
+    consumption_source: str = "DIRECT"
+
     warnings: tuple[str, ...] = field(default_factory=tuple)
 
     @property
@@ -194,6 +217,25 @@ class BillFields:
             patch["bill_amount"] = float(self.bill_amount)
         if self.is_bimonthly:
             patch["is_bimonthly"] = True
+
+        # Meter & calculation breakdown fields
+        if self.meter_number is not None:
+            patch["meter_number"] = self.meter_number
+        if self.initial_reading is not None:
+            patch["initial_reading"] = float(self.initial_reading)
+        if self.final_reading is not None:
+            patch["final_reading"] = float(self.final_reading)
+        if self.multiplying_factor is not None:
+            patch["multiplying_factor"] = float(self.multiplying_factor)
+        if self.meter_consumption is not None:
+            patch["meter_consumption"] = float(self.meter_consumption)
+        if self.energy_charges is not None:
+            patch["energy_charges"] = float(self.energy_charges)
+        if self.government_subsidy is not None:
+            patch["government_subsidy"] = float(self.government_subsidy)
+        if self.net_payable is not None:
+            patch["net_payable"] = float(self.net_payable)
+        patch["consumption_source"] = self.consumption_source
 
         # Context, not form fields. The browser's Zod schema strips these; they
         # are here so a UI can show what the bill said and ask for a confirmation.
@@ -318,16 +360,68 @@ def parse_bill_text(text: str) -> BillFields:
     if m := _CONSUMER_NUM.search(text):
         consumer_number = m.group(1).strip()
 
+    meter_number = None
+    if m := _METER_NO.search(text):
+        meter_number = m.group(1).strip()
+
+    initial_reading = None
+    final_reading = None
+    multiplying_factor = None
+    meter_consumption = None
+    consumption_source = "DIRECT"
+
+    if m := _READINGS_TABLE.search(text):
+        final_reading = _decimal(m.group(1))
+        initial_reading = _decimal(m.group(2))
+        multiplying_factor = _decimal(m.group(3)) or Decimal(1)
+        meter_consumption = _decimal(m.group(4))
+        if final_reading is not None and initial_reading is not None:
+            calc_diff = (final_reading - initial_reading) * multiplying_factor
+            meter_consumption = meter_consumption or calc_diff
+            units = meter_consumption
+            consumption_source = "METER_READINGS"
+            if "Could not find the units consumed — please enter them from your bill." in warnings:
+                warnings.remove("Could not find the units consumed — please enter them from your bill.")
+            warnings.append(
+                f"Consumption verified directly from meter readings: ({final_reading} - {initial_reading}) × {multiplying_factor} = {units} units."
+            )
+
+    energy_charges = None
+    if m := _ENERGY_CHARGES.search(text):
+        energy_charges = _decimal(m.group(1))
+
+    government_subsidy = None
+    if m := _GOVT_SUBSIDY.search(text):
+        government_subsidy = _decimal(m.group(1))
+
+    net_payable = None
+    if m := _NET_PAYABLE.search(text):
+        net_payable = _decimal(m.group(1))
+
     is_bi = bool(_BIMONTHLY.search(text)) or (span is not None and 46 <= span <= 75)
 
     bill_amount = None
     if m := _BILL_AMOUNT.search(text):
         bill_amount = _decimal(m.group(1))
+    bill_amount = net_payable or bill_amount
 
-    if bill_amount is not None:
-        calc_units = calculate_units_from_amount(float(bill_amount), tariff or "DOMESTIC")
-        if units is None:
+    # If units could not be extracted directly from meter reading or units label,
+    # use the tariff reversal formula:
+    if units is None:
+        if energy_charges is not None and government_subsidy is not None:
+            net_energy = energy_charges - government_subsidy
+            calc_units = calculate_units_from_amount(float(net_energy), tariff or "DOMESTIC")
             units = Decimal(str(calc_units))
+            consumption_source = "ENERGY_CHARGES_REVERSE"
+            if "Could not find the units consumed — please enter them from your bill." in warnings:
+                warnings.remove("Could not find the units consumed — please enter them from your bill.")
+            warnings.append(
+                f"Calculated {calc_units} units from net energy charges ₹{net_energy} (₹{energy_charges} - ₹{government_subsidy} subsidy) using TNERC tariff formula."
+            )
+        elif bill_amount is not None:
+            calc_units = calculate_units_from_amount(float(bill_amount), tariff or "DOMESTIC")
+            units = Decimal(str(calc_units))
+            consumption_source = "BILL_AMOUNT_REVERSE"
             if "Could not find the units consumed — please enter them from your bill." in warnings:
                 warnings.remove("Could not find the units consumed — please enter them from your bill.")
             warnings.append(
@@ -398,5 +492,14 @@ def parse_bill_text(text: str) -> BillFields:
         bill_address=bill_address,
         bill_amount=bill_amount,
         is_bimonthly=is_bi,
+        meter_number=meter_number,
+        initial_reading=initial_reading,
+        final_reading=final_reading,
+        multiplying_factor=multiplying_factor,
+        meter_consumption=meter_consumption,
+        energy_charges=energy_charges,
+        government_subsidy=government_subsidy,
+        net_payable=net_payable,
+        consumption_source=consumption_source,
         warnings=tuple(warnings),
     )

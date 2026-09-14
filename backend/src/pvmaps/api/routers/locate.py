@@ -316,6 +316,277 @@ async def geocode(
     return []
 
 
+import math
+
+
+class ScoreBreakdown(BaseModel):
+    building_match: int = 0
+    street_match: int = 0
+    locality_match: int = 0
+    pin_match: int = 0
+    section_match: int = 0
+    total_score: int = 0
+
+
+class LocationResolveRequest(BaseModel):
+    service_number: str | None = None
+    meter_number: str | None = None
+    address: str | None = None
+    section: str | None = None
+    circle: str | None = None
+    user_lat: float | None = None
+    user_lon: float | None = None
+
+
+class LocationResolveResponse(BaseModel):
+    latitude: float
+    longitude: float
+    accuracy_meters: float
+    confidence: float
+    source: str
+    requires_user_confirmation: bool
+    level: int
+    display_name: str
+    score_breakdown: ScoreBreakdown | None = None
+    user_distance_meters: float | None = None
+    user_distance_check: str | None = None
+    details: str
+
+
+class LocationConfirmRequest(BaseModel):
+    service_number: str
+    meter_number: str | None = None
+    consumer_name: str | None = None
+    section: str | None = None
+    circle: str | None = None
+    address: str | None = None
+    latitude: float
+    longitude: float
+    accuracy_meters: float = 10.0
+    source: str = "USER_CONFIRMED_GPS"
+
+
+PILOT_CONNECTIONS: dict[str, dict[str, Any]] = {
+    "08-211-019-1233": {
+        "meter_number": "1773876",
+        "consumer_name": "A.RAJAGOPAL",
+        "section": "GANDHI NAGAR / EAST",
+        "circle": "VELLORE",
+        "address": "3rd East Cross Road, Gandhi Nagar, Katpadi, Vellore, Tamil Nadu",
+        "latitude": 12.95390,
+        "longitude": 79.14870,
+        "accuracy_meters": 10.0,
+        "source": "TNPDCL_GIS",
+        "confidence": 0.98,
+    }
+}
+
+CONFIRMED_CONNECTIONS: dict[str, dict[str, Any]] = {}
+
+
+def haversine_distance_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    r = 6371000.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlam = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2.0) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2.0) ** 2
+    c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
+    return round(r * c, 1)
+
+
+def compute_confidence_score(
+    hit_display_name: str,
+    hit_kind: str | None,
+    raw_address: str,
+    section: str | None,
+    circle: str | None,
+) -> tuple[int, ScoreBreakdown]:
+    score = 0
+    breakdown = ScoreBreakdown()
+    lower_name = hit_display_name.lower()
+    lower_addr = raw_address.lower()
+
+    # 1. Exact building / apartment (+40)
+    if hit_kind in ("building", "house", "apartment", "residential", "rooftop"):
+        breakdown.building_match = 40
+        score += 40
+
+    # 2. Exact street found (+25)
+    street_m = re.search(r"([0-9a-z\s]+(?:road|street|cross|lane|salai|ave|nagar))", lower_addr)
+    if street_m:
+        tokens = [t for t in street_m.group(1).split() if len(t) > 2]
+        if any(tok in lower_name for tok in tokens):
+            breakdown.street_match = 25
+            score += 25
+
+    # 3. Locality matches (+15)
+    for loc in ("gandhi nagar", "katpadi", "vellore", "bharathi nagar", "viruthampattu"):
+        if loc in lower_addr and loc in lower_name:
+            breakdown.locality_match = 15
+            score += 15
+            break
+
+    # 4. PIN matches (+10)
+    pin_m = re.search(r"\b(6[0-9]{5})\b", raw_address)
+    if pin_m and pin_m.group(1) in hit_display_name:
+        breakdown.pin_match = 10
+        score += 10
+
+    # 5. TNPDCL section matches (+10)
+    if section:
+        sec_tokens = [t.strip().lower() for t in re.split(r"[/\\]", section) if len(t.strip()) > 3]
+        if any(st in lower_name for st in sec_tokens):
+            breakdown.section_match = 10
+            score += 10
+
+    breakdown.total_score = min(score, 100)
+    return breakdown.total_score, breakdown
+
+
+@router.post("/locate/resolve", response_model=LocationResolveResponse)
+@router.post("/resolve-location", response_model=LocationResolveResponse)
+async def resolve_location(req: LocationResolveRequest) -> LocationResolveResponse:
+    norm_svc = re.sub(r"[\s-]", "", req.service_number or "")
+    norm_meter = req.meter_number.strip() if req.meter_number else None
+
+    # Level 1 & 2: Check Confirmed or Pilot TNPDCL GIS connections
+    for pool, default_src, default_conf in [
+        (CONFIRMED_CONNECTIONS, "USER_CONFIRMED_GPS", 1.0),
+        (PILOT_CONNECTIONS, "TNPDCL_GIS", 0.98),
+    ]:
+        for key, rec in pool.items():
+            k_clean = re.sub(r"[\s-]", "", key)
+            m_clean = rec.get("meter_number")
+            if (norm_svc and norm_svc == k_clean) or (norm_meter and m_clean and norm_meter == m_clean):
+                lat = float(rec["latitude"])
+                lon = float(rec["longitude"])
+                dist = None
+                dist_check = None
+                if req.user_lat is not None and req.user_lon is not None:
+                    dist = haversine_distance_meters(req.user_lat, req.user_lon, lat, lon)
+                    dist_check = "likely" if dist <= 150 else ("suspicious" if dist > 500 else "moderate")
+
+                return LocationResolveResponse(
+                    latitude=lat,
+                    longitude=lon,
+                    accuracy_meters=float(rec.get("accuracy_meters", 10.0)),
+                    confidence=float(rec.get("confidence", default_conf)),
+                    source=str(rec.get("source", default_src)),
+                    requires_user_confirmation=False,
+                    level=1 if default_src == "TNPDCL_GIS" else 4,
+                    display_name=str(rec.get("address") or f"EB Connection {req.service_number or key}"),
+                    score_breakdown=ScoreBreakdown(
+                        building_match=40, street_match=25, locality_match=15, pin_match=10, section_match=10, total_score=100
+                    ),
+                    user_distance_meters=dist,
+                    user_distance_check=dist_check,
+                    details=f"Authoritative record matched for Service No: {req.service_number or key}",
+                )
+
+    # Level 3: Fallback to Multi-Component Geocoding + Confidence Engine
+    addr_query = req.address or f"{req.section or ''}, {req.circle or 'Vellore'}, Tamil Nadu"
+    clean_query = _BUILDINGS_RE.sub("", addr_query)
+    clean_query = _CAREOF_RE.sub("", clean_query)
+    for suf in _GLUED:
+        clean_query = re.sub(rf"(?i)\b([a-z]{{3,}}?){suf}\b", r"\1 " + suf, clean_query)
+    clean_query = re.sub(r"\s+", " ", clean_query).strip(" ,")
+
+    hits: list[GeocodeHit] = []
+    async with httpx.AsyncClient(timeout=12.0) as client:
+        # Try Mappls first if configured
+        if (MAPPLS_CLIENT_ID and MAPPLS_CLIENT_SECRET) or MAPPLS_REST_KEY:
+            hits = await _search_mappls(client, clean_query, limit=5)
+        if not hits:
+            # Fallback to Nominatim
+            variants = _variants(clean_query)
+            for attempt, cand in enumerate(variants):
+                if attempt > 0:
+                    await asyncio.sleep(1.1)
+                res = await _search(client, cand, limit=3)
+                if res:
+                    hits = [
+                        GeocodeHit(
+                            display_name=str(h["display_name"]),
+                            lat=float(h["lat"]),
+                            lon=float(h["lon"]),
+                            kind=h.get("type"),
+                            matched_query=cand if attempt > 0 else None,
+                        )
+                        for h in res
+                    ]
+                    break
+
+    if not hits:
+        raise HTTPException(status_code=404, detail="Could not geocode address. Please pin your location on the map.")
+
+    best_hit = hits[0]
+    total_score, breakdown = compute_confidence_score(
+        best_hit.display_name,
+        best_hit.kind,
+        req.address or "",
+        req.section,
+        req.circle,
+    )
+    confidence = round(total_score / 100.0, 2)
+    # User requirement: Only accept automatically when confidence >= 85% (0.85).
+    requires_confirmation = confidence < 0.85
+
+    dist = None
+    dist_check = None
+    if req.user_lat is not None and req.user_lon is not None:
+        dist = haversine_distance_meters(req.user_lat, req.user_lon, best_hit.lat, best_hit.lon)
+        dist_check = "likely" if dist <= 150 else ("suspicious" if dist > 500 else "moderate")
+
+    return LocationResolveResponse(
+        latitude=best_hit.lat,
+        longitude=best_hit.lon,
+        accuracy_meters=30.0 if total_score >= 85 else 80.0,
+        confidence=confidence,
+        source="ADDRESS_GEOCODING",
+        requires_user_confirmation=requires_confirmation,
+        level=3,
+        display_name=best_hit.display_name,
+        score_breakdown=breakdown,
+        user_distance_meters=dist,
+        user_distance_check=dist_check,
+        details="Multi-component address geocoding. User confirmation requested." if requires_confirmation else "High confidence geocoding match.",
+    )
+
+
+@router.post("/locate/confirm", response_model=LocationResolveResponse)
+@router.post("/confirm-location", response_model=LocationResolveResponse)
+async def confirm_location(req: LocationConfirmRequest) -> LocationResolveResponse:
+    norm_svc = re.sub(r"[\s-]", "", req.service_number)
+    CONFIRMED_CONNECTIONS[norm_svc] = {
+        "service_number": req.service_number,
+        "meter_number": req.meter_number,
+        "consumer_name": req.consumer_name,
+        "section": req.section,
+        "circle": req.circle,
+        "address": req.address,
+        "latitude": req.latitude,
+        "longitude": req.longitude,
+        "accuracy_meters": req.accuracy_meters,
+        "source": req.source,
+        "confidence": 1.0,
+    }
+
+    return LocationResolveResponse(
+        latitude=req.latitude,
+        longitude=req.longitude,
+        accuracy_meters=req.accuracy_meters,
+        confidence=1.0,
+        source=req.source,
+        requires_user_confirmation=False,
+        level=4,
+        display_name=req.address or f"Confirmed location for EB connection {req.service_number}",
+        score_breakdown=ScoreBreakdown(
+            building_match=40, street_match=25, locality_match=15, pin_match=10, section_match=10, total_score=100
+        ),
+        details="User-confirmed coordinates saved and linked to Service Connection.",
+    )
+
+
 @router.post("/roof-at")
 async def roof_at(body: RoofRequest) -> dict[str, Any]:
     """Segment the roof under a point, live, on the GPU.

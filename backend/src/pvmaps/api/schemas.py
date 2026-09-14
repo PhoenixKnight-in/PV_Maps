@@ -138,7 +138,7 @@ class SizingRequest(BaseModel):
     actual contract, and anything can POST here.
     """
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="ignore", frozen=True)
 
     building_id: str | None = Field(default=None, min_length=1, max_length=64)
     """A precomputed pilot roof. Exactly one of this and `traced_roof` is set."""
