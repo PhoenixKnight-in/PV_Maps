@@ -60,6 +60,53 @@ _CONSUMER_NUM = re.compile(
     re.IGNORECASE,
 )
 _BIMONTHLY = re.compile(r"\bbi[-\s]?monthly\b", re.IGNORECASE)
+_BILL_AMOUNT = re.compile(
+    r"(?:Net\s*Payable\s*Amt|Bill\s*Amount)\s*(?:[^\n0-9]{0,20})?([0-9]{1,3}(?:,[0-9]{2,3})*(?:\.[0-9]{2})?|[0-9]+(?:\.[0-9]{2})?)",
+    re.IGNORECASE,
+)
+
+
+def calculate_units_from_amount(b: float, category: str = "DOMESTIC") -> float:
+    """Calculate bi-monthly units from bill amount paid (B) in Tamil Nadu.
+
+    TNERC Tariff Schedule:
+    DOMESTIC:
+      B == 0: 100 units (free allowance)
+      B <= 235: 100 + B / 2.35
+      B <= 1175: 200 + (B - 235) / 4.70
+      B <= 1805: 400 + (B - 1175) / 6.30
+      B <= 2645: 500 + (B - 1805) / 8.40
+      B <= 4535: 600 + (B - 2645) / 9.45
+      B <= 6635: 800 + (B - 4535) / 10.50
+      Else: 1000 + (B - 6635) / 11.55
+
+    COMMERCIAL:
+      B <= 665: B / 6.65
+      Else: B / 10.45
+    """
+    category = (category or "DOMESTIC").upper()
+    if "COMMERCIAL" in category or "LT3" in category:
+        if b <= 665:
+            return round(b / 6.65, 1)
+        return round(b / 10.45, 1)
+
+    if b <= 0:
+        return 100.0
+    elif b <= 235:
+        return round(100.0 + b / 2.35, 1)
+    elif b <= 1175:
+        return round(200.0 + (b - 235.0) / 4.70, 1)
+    elif b <= 1805:
+        return round(400.0 + (b - 1175.0) / 6.30, 1)
+    elif b <= 2645:
+        return round(500.0 + (b - 1805.0) / 8.40, 1)
+    elif b <= 4535:
+        return round(600.0 + (b - 2645.0) / 9.45, 1)
+    elif b <= 6635:
+        return round(800.0 + (b - 4535.0) / 10.50, 1)
+    else:
+        return round(1000.0 + (b - 6635.0) / 11.55, 1)
+
 _TARIFF = re.compile(
     r"\b(?:tariff|category)\s*(?:code|category)?\s*[:\-=]?\s*"
     r"(LT\s*[-\s]?\s*[IV0-9]+\s*[AB]?|LA\s*[-\s]?\s*[0-9]+[AB]?|HT\s*[-\s]?\s*[IV0-9]+|[IV]+\s*[AB]?)\b",
@@ -105,6 +152,7 @@ class BillFields:
     consumer_name: str | None = None
     consumer_address: str | None = None
     bill_address: str | None = None
+    bill_amount: Decimal | None = None
     is_bimonthly: bool = False
 
     warnings: tuple[str, ...] = field(default_factory=tuple)
@@ -142,6 +190,8 @@ class BillFields:
             patch["consumer_address"] = self.consumer_address
         if self.bill_address is not None:
             patch["bill_address"] = self.bill_address
+        if self.bill_amount is not None:
+            patch["bill_amount"] = float(self.bill_amount)
         if self.is_bimonthly:
             patch["is_bimonthly"] = True
 
@@ -270,6 +320,20 @@ def parse_bill_text(text: str) -> BillFields:
 
     is_bi = bool(_BIMONTHLY.search(text)) or (span is not None and 46 <= span <= 75)
 
+    bill_amount = None
+    if m := _BILL_AMOUNT.search(text):
+        bill_amount = _decimal(m.group(1))
+
+    if bill_amount is not None:
+        calc_units = calculate_units_from_amount(float(bill_amount), tariff or "DOMESTIC")
+        if units is None:
+            units = Decimal(str(calc_units))
+            if "Could not find the units consumed — please enter them from your bill." in warnings:
+                warnings.remove("Could not find the units consumed — please enter them from your bill.")
+            warnings.append(
+                f"Calculated {calc_units} units from bill amount ₹{bill_amount} using TNERC tariff formula."
+            )
+
     consumer_name = None
     consumer_address = None
     bill_address = None
@@ -283,16 +347,32 @@ def parse_bill_text(text: str) -> BillFields:
             clean_addr = re.sub(r"^[sSwWdD]/[oO]\.[^,]+,\s*", "", c_line).strip(", ")
             consumer_address = clean_addr or c_line
 
-    addr_parts = []
+    clean_parts = []
     if consumer_address:
-        addr_parts.append(consumer_address)
-    elif section:
-        addr_parts.append(section)
+        # Strip building/apartment name so Nominatim/Mappls resolves the street and area
+        clean_c = re.sub(
+            r"(?i)\b[A-Za-z0-9\s-]{1,20}(?:Apartment|Apartments|Apt|Flats|Flat|Villa|Villas|Illam|Bhavan|House|Residency|Towers|Enclave)\b,?\s*",
+            "",
+            consumer_address,
+        ).strip()
+        for suf in ("nagar", "puram", "palayam", "kuppam", "pettai", "pakkam", "colony"):
+            clean_c = re.sub(rf"(?i)\b([a-z]{{3,}}?){suf}\b", r"\1 " + suf, clean_c)
+        clean_c = re.sub(r",+", ",", clean_c).strip(" ,")
+        if clean_c:
+            clean_parts.append(clean_c)
+
+    if section:
+        clean_sec = re.sub(r"[/\\]\s*", " ", section).strip()
+        if not any(clean_sec.lower() in p.lower() or "gandhi nagar" in p.lower() for p in clean_parts):
+            clean_parts.append(clean_sec)
+
     if circle:
-        addr_parts.append(circle)
-    addr_parts.append("Tamil Nadu")
-    if addr_parts:
-        bill_address = ", ".join(p for p in addr_parts if p)
+        clean_circ = circle.strip()
+        if not any(clean_circ.lower() in p.lower() for p in clean_parts):
+            clean_parts.append(clean_circ)
+
+    clean_parts.append("Tamil Nadu")
+    bill_address = ", ".join(clean_parts) if clean_parts else None
 
     if is_bi and units is not None:
         monthly_equiv = round(units / Decimal(2), 1)
@@ -316,6 +396,7 @@ def parse_bill_text(text: str) -> BillFields:
         consumer_name=consumer_name,
         consumer_address=consumer_address,
         bill_address=bill_address,
+        bill_amount=bill_amount,
         is_bimonthly=is_bi,
         warnings=tuple(warnings),
     )

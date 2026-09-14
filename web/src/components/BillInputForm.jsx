@@ -19,12 +19,61 @@ import Chip from "./ui/Chip";
  * It also shows a consumer service number. We never collect one: NFR "Privacy"
  * and ARCHITECTURE.md 8 keep consumer identifiers out of this system entirely.
  */
+export function calculateUnitsFromAmount(b, category = "DOMESTIC") {
+  const cat = (category || "DOMESTIC").toUpperCase();
+  const numB = parseFloat(b) || 0;
+
+  if (cat.includes("COMMERCIAL") || cat.includes("LT3")) {
+    if (numB <= 665) return Math.round(numB / 6.65);
+    return Math.round(numB / 10.45);
+  }
+
+  // DOMESTIC (LT 1A)
+  if (numB <= 0) return 100;
+  if (numB <= 235) return Math.round(100 + numB / 2.35);
+  if (numB <= 1175) return Math.round(200 + (numB - 235) / 4.70);
+  if (numB <= 1805) return Math.round(400 + (numB - 1175) / 6.30);
+  if (numB <= 2645) return Math.round(500 + (numB - 1805) / 8.40);
+  if (numB <= 4535) return Math.round(600 + (numB - 2645) / 9.45);
+  if (numB <= 6635) return Math.round(800 + (numB - 4535) / 10.50);
+  return Math.round(1000 + (numB - 6635) / 11.55);
+}
+
 export default function BillInputForm({ value, onChange, errors, onLocateAddress }) {
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState(null);
   const [extracted, setExtracted] = useState([]);
   const [warnings, setWarnings] = useState([]);
+  const [billAmount, setBillAmount] = useState(value.bill_amount ?? "");
+  const [tariffCategory, setTariffCategory] = useState("DOMESTIC");
   const { mode } = useDataState();
+
+  function onAmountChange(amt) {
+    setBillAmount(amt);
+    if (!amt || isNaN(amt)) return;
+    const bimonthly = calculateUnitsFromAmount(amt, tariffCategory);
+    const monthly = Math.round(bimonthly / 2);
+    onChange({
+      ...value,
+      bill_amount: amt,
+      billed_units_kwh: bimonthly,
+      monthly_units_kwh: monthly,
+    });
+  }
+
+  function onCategoryChange(cat) {
+    setTariffCategory(cat);
+    const amt = value.bill_amount ?? billAmount;
+    if (amt && !isNaN(amt)) {
+      const bimonthly = calculateUnitsFromAmount(amt, cat);
+      const monthly = Math.round(bimonthly / 2);
+      onChange({
+        ...value,
+        billed_units_kwh: bimonthly,
+        monthly_units_kwh: monthly,
+      });
+    }
+  }
 
   // FR-3.2 — "Offer manual input when upload or extraction is unavailable."
   // Extraction is server-side OCR; offline there is nothing to read the bill
@@ -119,6 +168,67 @@ export default function BillInputForm({ value, onChange, errors, onLocateAddress
           )}
         </div>
 
+        {/* Bill Amount to Units Calculator */}
+        <div className="rounded border border-sky-500/30 bg-sky-50/50 dark:bg-sky-950/20 p-2.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="caption font-semibold text-sky-900 dark:text-sky-300 flex items-center gap-1.5">
+              💰 Calculate from Bill Amount (₹)
+            </span>
+            <div className="flex items-center gap-1 text-[11px]">
+              <button
+                type="button"
+                onClick={() => onCategoryChange("DOMESTIC")}
+                className={`px-2 py-0.5 rounded font-medium transition ${
+                  tariffCategory === "DOMESTIC"
+                    ? "bg-sky-600 text-white"
+                    : "bg-ink/5 text-ink-muted hover:bg-ink/10"
+                }`}
+              >
+                Domestic
+              </button>
+              <button
+                type="button"
+                onClick={() => onCategoryChange("COMMERCIAL")}
+                className={`px-2 py-0.5 rounded font-medium transition ${
+                  tariffCategory === "COMMERCIAL"
+                    ? "bg-sky-600 text-white"
+                    : "bg-ink/5 text-ink-muted hover:bg-ink/10"
+                }`}
+              >
+                Commercial
+              </button>
+            </div>
+          </div>
+
+          <div className="flex gap-2 items-center">
+            <div className="relative flex-1">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-muted text-xs font-bold">
+                ₹
+              </span>
+              <input
+                type="number"
+                placeholder="e.g. 2620"
+                className="field pl-6 text-sm py-1 w-full font-mono"
+                value={value.bill_amount ?? billAmount}
+                onChange={(e) => onAmountChange(e.target.value)}
+              />
+            </div>
+            {value.billed_units_kwh && (
+              <div className="text-right shrink-0">
+                <span className="text-[11px] text-ink-sub block font-mono">
+                  {value.billed_units_kwh} units bi-monthly
+                </span>
+                <span className="text-xs font-bold text-sky-700 dark:text-sky-300 block font-mono">
+                  → {value.monthly_units_kwh} kWh / mo
+                </span>
+              </div>
+            )}
+          </div>
+          <p className="text-[11px] text-ink-muted leading-tight">
+            Computes consumption directly from amount paid using TNERC slab tariff.
+          </p>
+        </div>
+
         {/* Tamil Nadu Service Connection Identification Card */}
         <div className="rounded border border-amber-500/30 bg-amber-50/40 dark:bg-amber-950/20 p-2.5 space-y-2">
           <div className="flex items-center justify-between">
@@ -175,15 +285,20 @@ export default function BillInputForm({ value, onChange, errors, onLocateAddress
             </div>
           </div>
 
-          {(value.bill_address || value.consumer_address) && (
+          {(value.bill_address || value.consumer_address || value.section) && (
             <button
               type="button"
-              onClick={() => onLocateAddress?.(value.bill_address || value.consumer_address)}
-              className="w-full mt-1.5 py-1.5 px-2 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-medium flex items-center justify-center gap-1.5 shadow-sm transition"
+              onClick={() => {
+                const target =
+                  value.bill_address ||
+                  `${value.consumer_address || value.section}, ${value.circle || "Vellore"}, Tamil Nadu`;
+                onLocateAddress?.(target);
+              }}
+              className="w-full mt-1.5 py-2 px-3 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white rounded text-xs font-medium flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer"
             >
               <span>📍 Fly map to bill address:</span>
               <span className="truncate max-w-[200px] underline font-bold">
-                {value.consumer_address || value.bill_address}
+                {value.consumer_address || value.bill_address || value.section}
               </span>
             </button>
           )}

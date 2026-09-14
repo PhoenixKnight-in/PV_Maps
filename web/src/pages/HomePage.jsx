@@ -129,7 +129,11 @@ export default function HomePage() {
   async function locateFromBillAddress(addrStr) {
     if (!addrStr) return;
     try {
-      const hits = await api.geocode(addrStr);
+      let hits = await api.geocode(addrStr);
+      if ((!hits || hits.length === 0) && profile.section) {
+        const fallback = `${profile.section.replace(/[/\\]/g, " ")}, ${profile.circle || "Vellore"}, Tamil Nadu`;
+        hits = await api.geocode(fallback);
+      }
       if (hits && hits.length > 0) {
         await selectAddress({
           kind: "MAPPED",

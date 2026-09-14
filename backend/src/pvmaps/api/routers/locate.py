@@ -80,20 +80,17 @@ keystroke-batch. Four is enough to reach "locality, city" from a full postal
 address without turning one search into a rate-limit ban."""
 
 
+_BUILDINGS_RE = re.compile(
+    r"(?i)\b[A-Za-z0-9\s-]{1,20}(?:Apartment|Apartments|Apt|Flats|Flat|Villa|Villas|Illam|Bhavan|House|Residency|Towers|Enclave)\b,?\s*"
+)
+_CAREOF_RE = re.compile(r"(?i)\b[sSwWdD]/[oO]\.[^,]+,\s*")
+
+
 def _variants(q: str) -> list[str]:
     """Progressively broader forms of an address, most specific first.
 
     Nominatim is unforgiving about exactly the parts of an Indian address least
     likely to be in OSM -- the flat, the building name, the ordinal cross street.
-    Measured 2026-09-14:
-
-        "3rd East Cross Road, SM Apartment Gandhinagar,Vellore"  -> 0 hits
-        "East Cross Road Gandhi Nagar Vellore"                   -> 2 hits
-        "Gandhi Nagar Vellore"                                   -> 3 hits
-
-    So rather than returning nothing, unglue the suffixes and drop the leading
-    components one at a time. The caller keeps whichever form answered first and
-    tells the user it broadened.
     """
     seen: list[str] = []
 
@@ -104,19 +101,23 @@ def _variants(q: str) -> list[str]:
 
     add(q)
 
-    unglued = q
+    # Clean building names and care-of prefixes that never exist in public OSM
+    cleaned = _CAREOF_RE.sub("", q)
+    cleaned = _BUILDINGS_RE.sub("", cleaned)
+
+    unglued = cleaned
     for suffix in _GLUED:
         # Keep the prefix and insert a space: "Gandhinagar" -> "Gandhi nagar".
-        # The capture group is not optional -- dropping it collapses the token to
-        # the bare suffix and searches for every "nagar" in India.
         unglued = re.sub(rf"(?i)\b([a-z]{{3,}}?){suffix}\b", r"\1 " + suffix, unglued)
     add(unglued)
 
     # Drop leading comma-separated segments: in Indian addresses the flat and
     # building name come first and are the least likely to be mapped.
-    parts = [p for p in (x.strip() for x in unglued.split(",")) if p]
+    parts = [p.strip() for p in unglued.split(",") if p.strip()]
     for i in range(1, len(parts)):
-        add(", ".join(parts[i:]))
+        sub = ", ".join(parts[i:])
+        if len(sub.split()) > 1:
+            add(sub)
 
     return seen[:_MAX_VARIANTS]
 
