@@ -24,6 +24,7 @@ api = [
     "geoalchemy2>=0.15",
     "alembic>=1.14",
     "python-multipart>=0.0.12",   # POST /v1/bill-extract
+    "pypdf>=5.1",                 # PDF bill text extraction
     "structlog>=24.4",
     "orjson>=3.10",
     # /v1/geocode and /v1/roof-at are outbound HTTP. httpx was previously a dev

@@ -126,6 +126,23 @@ export default function HomePage() {
     await measureAt(a.lat, a.lon);
   }
 
+  async function locateFromBillAddress(addrStr) {
+    if (!addrStr) return;
+    try {
+      const hits = await api.geocode(addrStr);
+      if (hits && hits.length > 0) {
+        await selectAddress({
+          kind: "MAPPED",
+          label: hits[0].display_name,
+          lat: hits[0].lat,
+          lon: hits[0].lon,
+        });
+      }
+    } catch (e) {
+      console.warn("Could not geocode bill address:", e);
+    }
+  }
+
   async function submit(e) {
     e.preventDefault();
     setSubmitError(null);
@@ -364,7 +381,12 @@ export default function HomePage() {
         }
         right={
           <>
-            <BillInputForm value={form} onChange={setForm} errors={errors} />
+            <BillInputForm
+              value={form}
+              onChange={setForm}
+              errors={errors}
+              onLocateAddress={locateFromBillAddress}
+            />
             <DaytimeUseForm value={form} onChange={setForm} />
 
             <div className="hud px-3 py-2">

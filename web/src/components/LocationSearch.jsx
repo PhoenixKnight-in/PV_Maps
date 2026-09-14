@@ -25,7 +25,32 @@ export default function LocationSearch({ onPick, selected, busy = false }) {
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState(null);
+  const [locating, setLocating] = useState(false);
   const seq = useRef(0);
+
+  function locateMe() {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser.");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        choose({
+          kind: "MAPPED",
+          label: "Current GPS Location",
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+        });
+      },
+      (err) => {
+        setLocating(false);
+        setError("Unable to retrieve location: " + err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
 
   useEffect(() => {
     if (q.trim().length < 3) {
@@ -55,7 +80,7 @@ export default function LocationSearch({ onPick, selected, busy = false }) {
       setCursor(0);
       setSearched(true);
       setSearching(false);
-    }, 350); // Nominatim asks for at most 1 req/s; 350 ms plus typing clears it
+    }, 450); // Snappy debounce for search
     return () => clearTimeout(t);
   }, [q]);
 
@@ -117,25 +142,36 @@ export default function LocationSearch({ onPick, selected, busy = false }) {
         </span>
       </div>
 
-      <div className="relative mt-1">
-        <input
-          id="loc"
-          className="field pl-7 font-sans"
-          placeholder="Any address in India…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={onKeyDown}
-          autoComplete="off"
-          role="combobox"
-          aria-expanded={rows.length > 0}
-          aria-controls="loc-results"
-        />
-        <span
-          className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 font-mono text-code-mono text-ink-subtle"
-          aria-hidden="true"
+      <div className="relative mt-1 flex gap-1.5 items-center">
+        <div className="relative flex-1">
+          <input
+            id="loc"
+            className="field pl-7 font-sans w-full"
+            placeholder="Address, door number, street, locality…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={onKeyDown}
+            autoComplete="off"
+            role="combobox"
+            aria-expanded={rows.length > 0}
+            aria-controls="loc-results"
+          />
+          <span
+            className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 font-mono text-code-mono text-ink-subtle"
+            aria-hidden="true"
+          >
+            ⌕
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={locateMe}
+          title="Pinpoint current GPS location"
+          className="btn-subtle px-2.5 py-1.5 text-xs flex items-center gap-1 shrink-0 h-[34px]"
+          disabled={locating}
         >
-          ⌕
-        </span>
+          {locating ? "📍…" : "📍 GPS"}
+        </button>
       </div>
 
       {error && (

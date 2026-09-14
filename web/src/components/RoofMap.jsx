@@ -109,6 +109,7 @@ export default function RoofMap({
 }) {
   const ref = useRef(null);
   const map = useRef(null);
+  const markerRef = useRef(null);
 
   // Primitives, not the array. `center={[lon, lat]}` is a new array on every
   // render, and keying the creation effect on it destroyed and rebuilt the map
@@ -164,6 +165,8 @@ export default function RoofMap({
     );
     map.current = m;
     return () => {
+      markerRef.current?.remove();
+      markerRef.current = null;
       map.current?.remove();
       map.current = null;
     };
@@ -210,14 +213,42 @@ export default function RoofMap({
     return () => ro.disconnect();
   }, []);
 
-  // Recentre without remounting.
+  // Recentre and reposition draggable pin without remounting.
   useEffect(() => {
     const m = map.current;
     if (!m || lon == null || lat == null) return;
     // `essential` so the flight still runs under prefers-reduced-motion: the
     // camera move IS the feedback that the address resolved.
     m.flyTo({ center: [lon, lat], zoom: 19, duration: 900, essential: true });
-  }, [lon, lat]);
+
+    if (!markerRef.current) {
+      const el = document.createElement("div");
+      el.className = "cursor-grab active:cursor-grabbing";
+      el.title = "Drag this pin to your exact roof";
+      el.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.35)); cursor: grab;">
+          <div style="background: #f59e0b; color: white; border: 2.5px solid white; border-radius: 9999px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);">
+            📍
+          </div>
+          <div style="width: 2px; height: 8px; background: #b45309;"></div>
+        </div>
+      `;
+      const marker = new maplibregl.Marker({
+        element: el,
+        draggable: true,
+      })
+        .setLngLat([lon, lat])
+        .addTo(m);
+
+      marker.on("dragend", () => {
+        const lngLat = marker.getLngLat();
+        onPickPoint?.(lngLat.lat, lngLat.lng);
+      });
+      markerRef.current = marker;
+    } else {
+      markerRef.current.setLngLat([lon, lat]);
+    }
+  }, [lon, lat, onPickPoint]);
 
   useEffect(() => {
     const m = map.current;
@@ -422,6 +453,9 @@ export default function RoofMap({
         return;
       }
       onPickPoint?.(e.lngLat.lat, e.lngLat.lng);
+      if (markerRef.current) {
+        markerRef.current.setLngLat([e.lngLat.lng, e.lngLat.lat]);
+      }
     };
 
     m.on("click", handler);
@@ -435,12 +469,31 @@ export default function RoofMap({
 
   if (fill) {
     // Workstation backdrop: the canvas the floating columns sit over.
-    return <div ref={ref} className="h-full w-full" />;
+    return (
+      <div className="relative h-full w-full">
+        <div ref={ref} className="h-full w-full" />
+        {/* Reticle / Pin instruction prompt */}
+        <div className="hud pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-3.5 py-1.5 bg-white/95 backdrop-blur-sm shadow-md rounded-full border border-amber-500/40 text-xs font-sans">
+          <span className="text-amber-600 font-semibold flex items-center gap-1">
+            <span className="animate-pulse">🎯</span> Tap or drag pin
+          </span>
+          <span className="text-ink-muted">onto your exact roof</span>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="relative overflow-hidden rounded-lg border border-hairline">
       <div ref={ref} className="h-[320px] w-full lg:h-[420px]" />
+
+      {/* Reticle / Pin instruction prompt */}
+      <div className="hud pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-3.5 py-1.5 bg-white/95 backdrop-blur-sm shadow-md rounded-full border border-amber-500/40 text-xs font-sans">
+        <span className="text-amber-600 font-semibold flex items-center gap-1">
+          <span className="animate-pulse">🎯</span> Tap or drag pin
+        </span>
+        <span className="text-ink-muted">onto your exact roof</span>
+      </div>
 
       {/* Address pill. The live dot marks a resolved pilot address rather than
           a guess from a live geocoder — there isn't one. */}

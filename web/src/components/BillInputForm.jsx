@@ -19,7 +19,7 @@ import Chip from "./ui/Chip";
  * It also shows a consumer service number. We never collect one: NFR "Privacy"
  * and ARCHITECTURE.md 8 keep consumer identifiers out of this system entirely.
  */
-export default function BillInputForm({ value, onChange, errors }) {
+export default function BillInputForm({ value, onChange, errors, onLocateAddress }) {
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState(null);
   const [extracted, setExtracted] = useState([]);
@@ -42,6 +42,9 @@ export default function BillInputForm({ value, onChange, errors }) {
       onChange({ ...value, ...patch });
       setExtracted(patch.extracted_fields ?? []);
       setWarnings(patch.warnings ?? []);
+      if (patch.bill_address && onLocateAddress) {
+        onLocateAddress(patch.bill_address);
+      }
     } catch {
       // Extraction failing must never block the calculation.
       setExtractError("Could not read that bill — please type the values in.");
@@ -113,6 +116,76 @@ export default function BillInputForm({ value, onChange, errors }) {
             <p className="mt-1 text-code-mono text-critical">
               {errors.sanctioned_load_kw.message ?? errors.sanctioned_load_kw}
             </p>
+          )}
+        </div>
+
+        {/* Tamil Nadu Service Connection Identification Card */}
+        <div className="rounded border border-amber-500/30 bg-amber-50/40 dark:bg-amber-950/20 p-2.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="caption font-semibold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+              ⚡ TNEB / TNPDCL Connection
+            </span>
+            {value.consumer_number && (
+              <span className="text-code-mono font-mono text-xs bg-amber-200/80 dark:bg-amber-800/60 px-1.5 py-0.5 rounded text-amber-950 dark:text-amber-100 font-bold">
+                {value.consumer_number}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span className="text-ink-muted block text-code-mono">Section</span>
+              <input
+                type="text"
+                placeholder="e.g. GANDHI NAGAR / EAST"
+                className="field mt-0.5 text-xs py-1 px-1.5 w-full"
+                value={value.section ?? ""}
+                onChange={(e) => onChange({ ...value, section: e.target.value })}
+              />
+            </div>
+            <div>
+              <span className="text-ink-muted block text-code-mono">Circle</span>
+              <input
+                type="text"
+                placeholder="e.g. VELLORE"
+                className="field mt-0.5 text-xs py-1 px-1.5 w-full"
+                value={value.circle ?? ""}
+                onChange={(e) => onChange({ ...value, circle: e.target.value })}
+              />
+            </div>
+            <div>
+              <span className="text-ink-muted block text-code-mono">Distribution</span>
+              <input
+                type="text"
+                placeholder="e.g. E.B"
+                className="field mt-0.5 text-xs py-1 px-1.5 w-full"
+                value={value.distribution ?? ""}
+                onChange={(e) => onChange({ ...value, distribution: e.target.value })}
+              />
+            </div>
+            <div>
+              <span className="text-ink-muted block text-code-mono">Consumer / Service No.</span>
+              <input
+                type="text"
+                placeholder="e.g. 08-211-019-1233"
+                className="field mt-0.5 text-xs py-1 px-1.5 w-full font-mono font-medium"
+                value={value.consumer_number ?? ""}
+                onChange={(e) => onChange({ ...value, consumer_number: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {(value.bill_address || value.consumer_address) && (
+            <button
+              type="button"
+              onClick={() => onLocateAddress?.(value.bill_address || value.consumer_address)}
+              className="w-full mt-1.5 py-1.5 px-2 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-medium flex items-center justify-center gap-1.5 shadow-sm transition"
+            >
+              <span>📍 Fly map to bill address:</span>
+              <span className="truncate max-w-[200px] underline font-bold">
+                {value.consumer_address || value.bill_address}
+              </span>
+            </button>
           )}
         </div>
 

@@ -100,6 +100,15 @@ export const UsageProfileSchema = z
 
     occupancy: Occupancy,
     modifiers: z.array(UsageModifier).default([]),
+
+    // TNEB service connection metadata from bill (optional)
+    consumer_number: z.string().optional(),
+    section: z.string().optional(),
+    circle: z.string().optional(),
+    distribution: z.string().optional(),
+    consumer_name: z.string().optional(),
+    consumer_address: z.string().optional(),
+    bill_address: z.string().optional(),
   })
   .refine((v) => Boolean(v.building_id) || Boolean(v.traced_roof), {
     message: "Pick an address, or tap a roof on the map to measure it",

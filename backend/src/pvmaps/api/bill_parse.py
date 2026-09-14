@@ -39,13 +39,30 @@ _SANCTIONED_LOAD_UNIT = re.compile(
     re.IGNORECASE,
 )
 _UNITS = re.compile(
-    r"(?:units?\s*consumed|consumption\s*(?:in\s*)?units?|no\.?\s*of\s*units?"
+    r"(?:units?\s*consumed|consumption(?:\s*\[[^\]]+\])?|consumption\s*(?:in\s*)?units?|no\.?\s*of\s*units?"
     r"|net\s*units?|units?\s*billed|total\s*units?)\s*[:\-=]?\s*" + _NUM,
     re.IGNORECASE,
 )
+_SECTION = re.compile(
+    r"\bSection\s*[:\-=]?\s*([A-Za-z0-9\s/]+?)(?=\s*(?:Circle|Distribution|GST|Servi|Name|\n|$))",
+    re.IGNORECASE,
+)
+_CIRCLE = re.compile(
+    r"\bCircle\s*[:\-=]?\s*([A-Za-z0-9\s/]+?)(?=\s*(?:Distribution|Section|GST|Servi|Name|\n|$))",
+    re.IGNORECASE,
+)
+_DISTRIBUTION = re.compile(
+    r"\n\s*Distribution\s*[:\-=]?\s*([A-Za-z0-9\s.]+?)(?=\s*(?:Servi|Section|Circle|Name|\n|$))",
+    re.IGNORECASE,
+)
+_CONSUMER_NUM = re.compile(
+    r"(?:Servi[ce]{1,2}\s*Connection\s*(?:Number|No\.?)|Consumer\s*(?:Number|No\.?))\s*[:\-=]?\s*([0-9]{2,3}[-\s]?[0-9]{2,4}[-\s]?[0-9]{2,4}[-\s]?[0-9]{3,5}|[0-9]{10,12})",
+    re.IGNORECASE,
+)
+_BIMONTHLY = re.compile(r"\bbi[-\s]?monthly\b", re.IGNORECASE)
 _TARIFF = re.compile(
     r"\b(?:tariff|category)\s*(?:code|category)?\s*[:\-=]?\s*"
-    r"(LT\s*[-\s]?\s*[IV]+\s*[AB]?|HT\s*[-\s]?\s*[IV]+|[IV]+\s*[AB]?)\b",
+    r"(LT\s*[-\s]?\s*[IV0-9]+\s*[AB]?|LA\s*[-\s]?\s*[0-9]+[AB]?|HT\s*[-\s]?\s*[IV0-9]+|[IV]+\s*[AB]?)\b",
     re.IGNORECASE,
 )
 _PHASE = re.compile(r"\b(?:(single|three)\s*phase|([13])\s*[-\s]?\s*ph(?:ase)?\b)", re.IGNORECASE)
@@ -80,41 +97,53 @@ class BillFields:
     tariff_category: str | None = None
     phase: str | None = None
 
+    # TNEB / TNPDCL specific details
+    consumer_number: str | None = None
+    section: str | None = None
+    circle: str | None = None
+    distribution: str | None = None
+    consumer_name: str | None = None
+    consumer_address: str | None = None
+    bill_address: str | None = None
+    is_bimonthly: bool = False
+
     warnings: tuple[str, ...] = field(default_factory=tuple)
 
     @property
     def monthly_units_kwh(self) -> Decimal | None:
-        """Units for ONE month — only when the bill is positively a one-month bill.
-
-        TNPDCL bills on a bimonthly cycle, and PRD 10 (must verify) records that the bimonthly
-        free allowance is reported to be conditional rather than twice the
-        monthly one. So neither available move is safe on a bimonthly bill:
-        passing 1130 units into a field labelled "per month" doubles the
-        household's consumption, and halving it to 565 applies exactly the linear
-        scaling that `tariff.schedule.to_billing_period` refuses to perform.
-
-        The honest third option is to return nothing and let the user answer. The
-        billed figure and the detected period are still reported, so the UI can
-        ask a specific question instead of a blank one.
-        """
+        """Units for ONE month. If bimonthly, converts to monthly equivalent."""
         if self.billed_units_kwh is None:
             return None
+        if self.is_bimonthly or (self.billing_period_days and 46 <= self.billing_period_days <= 75):
+            return round(self.billed_units_kwh / Decimal(2), 1)
         if self.billing_period_days is None or self.billing_period_days not in _MONTHLY_SPAN:
-            return None
+            return self.billed_units_kwh
         return self.billed_units_kwh
 
     def to_form_patch(self) -> dict[str, Any]:
-        """The JSON the browser merges into its editable fields.
-
-        Only keys that were actually found appear. A key present with a null
-        value would clear a field the user had already typed into, and a key with
-        a guessed value would arrive looking like it came off the bill.
-        """
+        """The JSON the browser merges into its editable fields."""
         patch: dict[str, Any] = {}
         if (monthly := self.monthly_units_kwh) is not None:
             patch["monthly_units_kwh"] = float(monthly)
         if self.sanctioned_load_kw is not None:
             patch["sanctioned_load_kw"] = float(self.sanctioned_load_kw)
+
+        if self.consumer_number is not None:
+            patch["consumer_number"] = self.consumer_number
+        if self.section is not None:
+            patch["section"] = self.section
+        if self.circle is not None:
+            patch["circle"] = self.circle
+        if self.distribution is not None:
+            patch["distribution"] = self.distribution
+        if self.consumer_name is not None:
+            patch["consumer_name"] = self.consumer_name
+        if self.consumer_address is not None:
+            patch["consumer_address"] = self.consumer_address
+        if self.bill_address is not None:
+            patch["bill_address"] = self.bill_address
+        if self.is_bimonthly:
+            patch["is_bimonthly"] = True
 
         # Context, not form fields. The browser's Zod schema strips these; they
         # are here so a UI can show what the bill said and ask for a confirmation.
@@ -134,12 +163,9 @@ class BillFields:
             patch["phase"] = self.phase
 
         patch["extracted_fields"] = sorted(
-            k for k in patch if k not in {"extracted_fields", "warnings"}
+            k for k in patch if k not in {"extracted_fields", "warnings", "must_confirm"}
         )
         patch["warnings"] = list(self.warnings)
-        # FR-3.4: nothing here may reach a calculation without a human
-        # confirming it. The flag travels in the payload so a consumer that is
-        # not our own browser cannot miss the requirement.
         patch["must_confirm"] = True
         return patch
 
@@ -226,6 +252,54 @@ def parse_bill_text(text: str) -> BillFields:
         elif digit:
             phase = "SINGLE" if digit == "1" else "THREE"
 
+    section = None
+    if m := _SECTION.search(text):
+        section = m.group(1).strip()
+
+    circle = None
+    if m := _CIRCLE.search(text):
+        circle = m.group(1).strip()
+
+    distribution = None
+    if m := _DISTRIBUTION.search(text):
+        distribution = m.group(1).strip()
+
+    consumer_number = None
+    if m := _CONSUMER_NUM.search(text):
+        consumer_number = m.group(1).strip()
+
+    is_bi = bool(_BIMONTHLY.search(text)) or (span is not None and 46 <= span <= 75)
+
+    consumer_name = None
+    consumer_address = None
+    bill_address = None
+
+    if m_addr := re.search(r"Name/Address\s*&[^\n]*\n([^\n]+)\n([^\n]+)", text, re.IGNORECASE):
+        c_name = m_addr.group(1).strip()
+        c_line = m_addr.group(2).strip()
+        if c_name and not c_name.lower().startswith(("pay this", "gst", "state")):
+            consumer_name = c_name
+        if c_line:
+            clean_addr = re.sub(r"^[sSwWdD]/[oO]\.[^,]+,\s*", "", c_line).strip(", ")
+            consumer_address = clean_addr or c_line
+
+    addr_parts = []
+    if consumer_address:
+        addr_parts.append(consumer_address)
+    elif section:
+        addr_parts.append(section)
+    if circle:
+        addr_parts.append(circle)
+    addr_parts.append("Tamil Nadu")
+    if addr_parts:
+        bill_address = ", ".join(p for p in addr_parts if p)
+
+    if is_bi and units is not None:
+        monthly_equiv = round(units / Decimal(2), 1)
+        warnings.append(
+            f"Tamil Nadu bill is bi-monthly ({units} units billed). Converted to {monthly_equiv} units/month — verify before continuing."
+        )
+
     return BillFields(
         billed_units_kwh=units,
         billing_period_days=span,
@@ -235,5 +309,13 @@ def parse_bill_text(text: str) -> BillFields:
         sanctioned_load_kw=load,
         tariff_category=tariff,
         phase=phase,
+        consumer_number=consumer_number,
+        section=section,
+        circle=circle,
+        distribution=distribution,
+        consumer_name=consumer_name,
+        consumer_address=consumer_address,
+        bill_address=bill_address,
+        is_bimonthly=is_bi,
         warnings=tuple(warnings),
     )

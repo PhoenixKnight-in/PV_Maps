@@ -71,6 +71,9 @@ services:
       PVMAPS_LOG_LEVEL: ${PVMAPS_LOG_LEVEL:-info}
       SEGMENTER_URL: ${SEGMENTER_URL:-http://segmenter:8100}
       NOMINATIM_CONTACT: ${NOMINATIM_CONTACT:-pvmaps-pilot}
+      MAPPLS_CLIENT_ID: ${MAPPLS_CLIENT_ID:-}
+      MAPPLS_CLIENT_SECRET: ${MAPPLS_CLIENT_SECRET:-}
+      MAPPLS_REST_KEY: ${MAPPLS_REST_KEY:-}
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
