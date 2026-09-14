@@ -81,16 +81,16 @@
       "typology": "residential",
       "confidence": 0.82,
       "annual_yield_kwh_per_kwp": {
-        "value": 1550.0,
-        "lo": 1500.0,
-        "hi": 1600.0,
+        "value": 1572.96,
+        "lo": 1474.83,
+        "hi": 1671.1,
         "source": "inferred",
-        "confidence": 0.5,
-        "as_of": "2025-07-01",
-        "note": "Regional band for Inland Tamil Nadu (Vellore pilot) (tn-inland-2025). This roof has not been analysed individually."
+        "confidence": 0.55,
+        "as_of": null,
+        "note": "pvlib analysis pvlib-clearsky-2026.1 for this roof"
       },
-      "yield_source": "REGIONAL_FALLBACK",
-      "analysis_version": null
+      "yield_source": "BUILDING",
+      "analysis_version": "pvlib-clearsky-2026.1"
     },
     "bldg-demo-2": {
       "id": "bldg-demo-2",
@@ -132,16 +132,16 @@
       "typology": "residential",
       "confidence": 0.79,
       "annual_yield_kwh_per_kwp": {
-        "value": 1550.0,
-        "lo": 1500.0,
-        "hi": 1600.0,
+        "value": 1572.95,
+        "lo": 1474.82,
+        "hi": 1671.09,
         "source": "inferred",
-        "confidence": 0.5,
-        "as_of": "2025-07-01",
-        "note": "Regional band for Inland Tamil Nadu (Vellore pilot) (tn-inland-2025). This roof has not been analysed individually."
+        "confidence": 0.55,
+        "as_of": null,
+        "note": "pvlib analysis pvlib-clearsky-2026.1 for this roof"
       },
-      "yield_source": "REGIONAL_FALLBACK",
-      "analysis_version": null
+      "yield_source": "BUILDING",
+      "analysis_version": "pvlib-clearsky-2026.1"
     },
     "bldg-demo-3": {
       "id": "bldg-demo-3",
@@ -183,16 +183,16 @@
       "typology": "institutional",
       "confidence": 0.68,
       "annual_yield_kwh_per_kwp": {
-        "value": 1550.0,
-        "lo": 1500.0,
-        "hi": 1600.0,
+        "value": 1572.89,
+        "lo": 1474.76,
+        "hi": 1671.02,
         "source": "inferred",
-        "confidence": 0.5,
-        "as_of": "2025-07-01",
-        "note": "Regional band for Inland Tamil Nadu (Vellore pilot) (tn-inland-2025). This roof has not been analysed individually."
+        "confidence": 0.55,
+        "as_of": null,
+        "note": "pvlib analysis pvlib-clearsky-2026.1 for this roof"
       },
-      "yield_source": "REGIONAL_FALLBACK",
-      "analysis_version": null
+      "yield_source": "BUILDING",
+      "analysis_version": "pvlib-clearsky-2026.1"
     },
     "bldg-demo-4": {
       "id": "bldg-demo-4",
@@ -306,16 +306,16 @@
       "typology": "residential",
       "confidence": 0.74,
       "annual_yield_kwh_per_kwp": {
-        "value": 1550.0,
-        "lo": 1500.0,
-        "hi": 1600.0,
+        "value": 1577.14,
+        "lo": 1478.77,
+        "hi": 1675.52,
         "source": "inferred",
-        "confidence": 0.5,
-        "as_of": "2025-07-01",
-        "note": "Regional band for Inland Tamil Nadu (Vellore pilot) (tn-inland-2025). This roof has not been analysed individually."
+        "confidence": 0.55,
+        "as_of": null,
+        "note": "pvlib analysis pvlib-clearsky-2026.1 for this roof"
       },
-      "yield_source": "REGIONAL_FALLBACK",
-      "analysis_version": null
+      "yield_source": "BUILDING",
+      "analysis_version": "pvlib-clearsky-2026.1"
     },
     "bldg-demo-5": {
       "id": "bldg-demo-5",
@@ -357,16 +357,16 @@
       "typology": "residential",
       "confidence": 0.81,
       "annual_yield_kwh_per_kwp": {
-        "value": 1550.0,
-        "lo": 1500.0,
-        "hi": 1600.0,
+        "value": 1572.93,
+        "lo": 1474.8,
+        "hi": 1671.06,
         "source": "inferred",
-        "confidence": 0.5,
-        "as_of": "2025-07-01",
-        "note": "Regional band for Inland Tamil Nadu (Vellore pilot) (tn-inland-2025). This roof has not been analysed individually."
+        "confidence": 0.55,
+        "as_of": null,
+        "note": "pvlib analysis pvlib-clearsky-2026.1 for this roof"
       },
-      "yield_source": "REGIONAL_FALLBACK",
-      "analysis_version": null
+      "yield_source": "BUILDING",
+      "analysis_version": "pvlib-clearsky-2026.1"
     }
   },
   "recommendations": {
@@ -376,28 +376,28 @@
       "recommended": {
         "kwp": 1.5,
         "annual_generation": {
-          "lo": 2250.0,
-          "hi": 2400.0
+          "lo": 2212.25,
+          "hi": 2506.65
         },
         "self_consumed_kwh": {
           "lo": 141.25,
-          "hi": 200.0
+          "hi": 208.89
         },
         "exported_kwh": {
           "lo": 0.0,
-          "hi": 58.75
+          "hi": 67.64
         },
         "annual_self_consumed_kwh": {
           "lo": 1695.0,
-          "hi": 2400.0
+          "hi": 2506.65
         },
         "annual_exported_kwh": {
           "lo": 0.0,
-          "hi": 705.0
+          "hi": 811.65
         },
         "annual_bill_savings": {
           "lo": 19577.25,
-          "hi": 26397.0
+          "hi": 27292.86
         },
         "annual_export_credit": {
           "lo": 0.0,
@@ -409,7 +409,7 @@
         },
         "annual_net_benefit": {
           "lo": 17777.25,
-          "hi": 25497.0
+          "hi": 26392.86
         },
         "gross_capex": {
           "lo": 67500.0,
@@ -422,43 +422,43 @@
         },
         "npv": {
           "lo": 119191.03,
-          "hi": 289129.78
+          "hi": 300079.18
         },
         "payback_years": {
           "lo": 0.9,
           "hi": 2.5
         },
         "effective_rate": {
-          "lo": 8.1572,
-          "hi": 11.732
+          "lo": 7.8101,
+          "hi": 12.3372
         }
       },
       "curve": [
         {
           "kwp": 0.5,
           "annual_generation": {
-            "lo": 750.0,
-            "hi": 800.0
+            "lo": 737.42,
+            "hi": 835.55
           },
           "self_consumed_kwh": {
-            "lo": 62.5,
-            "hi": 66.67
+            "lo": 61.45,
+            "hi": 69.63
           },
           "exported_kwh": {
             "lo": 0.0,
             "hi": 0.0
           },
           "annual_self_consumed_kwh": {
-            "lo": 750.0,
-            "hi": 800.0
+            "lo": 737.42,
+            "hi": 835.55
           },
           "annual_exported_kwh": {
             "lo": 0.0,
             "hi": 0.0
           },
           "annual_bill_savings": {
-            "lo": 8662.5,
-            "hi": 9240.0
+            "lo": 8517.14,
+            "hi": 9650.6
           },
           "annual_export_credit": {
             "lo": 0.0,
@@ -469,8 +469,8 @@
             "hi": 600.0
           },
           "annual_net_benefit": {
-            "lo": 8062.5,
-            "hi": 8940.0
+            "lo": 7917.14,
+            "hi": 9350.6
           },
           "gross_capex": {
             "lo": 22500.0,
@@ -482,43 +482,43 @@
             "hi": 15000.0
           },
           "npv": {
-            "lo": 59465.41,
-            "hi": 101766.59
+            "lo": 58122.89,
+            "hi": 106785.06
           },
           "payback_years": {
             "lo": 0.8,
             "hi": 1.9
           },
           "effective_rate": {
-            "lo": 10.8281,
-            "hi": 12.32
+            "lo": 10.1935,
+            "hi": 13.0871
           }
         },
         {
           "kwp": 1.0,
           "annual_generation": {
-            "lo": 1500.0,
-            "hi": 1600.0
+            "lo": 1474.83,
+            "hi": 1671.1
           },
           "self_consumed_kwh": {
-            "lo": 125.0,
-            "hi": 133.33
+            "lo": 122.9,
+            "hi": 139.26
           },
           "exported_kwh": {
             "lo": 0.0,
             "hi": 0.0
           },
           "annual_self_consumed_kwh": {
-            "lo": 1500.0,
-            "hi": 1600.0
+            "lo": 1474.83,
+            "hi": 1671.1
           },
           "annual_exported_kwh": {
             "lo": 0.0,
             "hi": 0.0
           },
           "annual_bill_savings": {
-            "lo": 17325.0,
-            "hi": 18480.0
+            "lo": 17034.29,
+            "hi": 19301.21
           },
           "annual_export_credit": {
             "lo": 0.0,
@@ -529,8 +529,8 @@
             "hi": 1200.0
           },
           "annual_net_benefit": {
-            "lo": 16125.0,
-            "hi": 17880.0
+            "lo": 15834.29,
+            "hi": 18701.21
           },
           "gross_capex": {
             "lo": 45000.0,
@@ -542,43 +542,43 @@
             "hi": 30000.0
           },
           "npv": {
-            "lo": 118930.81,
-            "hi": 203533.18
+            "lo": 116245.78,
+            "hi": 213570.12
           },
           "payback_years": {
             "lo": 0.8,
             "hi": 1.9
           },
           "effective_rate": {
-            "lo": 10.8281,
-            "hi": 12.32
+            "lo": 10.1935,
+            "hi": 13.0871
           }
         },
         {
           "kwp": 1.5,
           "annual_generation": {
-            "lo": 2250.0,
-            "hi": 2400.0
+            "lo": 2212.25,
+            "hi": 2506.65
           },
           "self_consumed_kwh": {
             "lo": 141.25,
-            "hi": 200.0
+            "hi": 208.89
           },
           "exported_kwh": {
             "lo": 0.0,
-            "hi": 58.75
+            "hi": 67.64
           },
           "annual_self_consumed_kwh": {
             "lo": 1695.0,
-            "hi": 2400.0
+            "hi": 2506.65
           },
           "annual_exported_kwh": {
             "lo": 0.0,
-            "hi": 705.0
+            "hi": 811.65
           },
           "annual_bill_savings": {
             "lo": 19577.25,
-            "hi": 26397.0
+            "hi": 27292.86
           },
           "annual_export_credit": {
             "lo": 0.0,
@@ -590,7 +590,7 @@
           },
           "annual_net_benefit": {
             "lo": 17777.25,
-            "hi": 25497.0
+            "hi": 26392.86
           },
           "gross_capex": {
             "lo": 67500.0,
@@ -603,22 +603,22 @@
           },
           "npv": {
             "lo": 119191.03,
-            "hi": 289129.78
+            "hi": 300079.18
           },
           "payback_years": {
             "lo": 0.9,
             "hi": 2.5
           },
           "effective_rate": {
-            "lo": 8.1572,
-            "hi": 11.732
+            "lo": 7.8101,
+            "hi": 12.3372
           }
         },
         {
           "kwp": 2.0,
           "annual_generation": {
-            "lo": 3000.0,
-            "hi": 3200.0
+            "lo": 2949.66,
+            "hi": 3342.2
           },
           "self_consumed_kwh": {
             "lo": 141.25,
@@ -626,7 +626,7 @@
           },
           "exported_kwh": {
             "lo": 0.0,
-            "hi": 125.42
+            "hi": 137.27
           },
           "annual_self_consumed_kwh": {
             "lo": 1695.0,
@@ -634,7 +634,7 @@
           },
           "annual_exported_kwh": {
             "lo": 0.0,
-            "hi": 1505.0
+            "hi": 1647.2
           },
           "annual_bill_savings": {
             "lo": 19577.25,
@@ -670,31 +670,31 @@
             "hi": 3.5
           },
           "effective_rate": {
-            "lo": 6.1179,
-            "hi": 10.6218
+            "lo": 5.8576,
+            "hi": 10.8031
           }
         },
         {
           "kwp": 2.5,
           "annual_generation": {
-            "lo": 3750.0,
-            "hi": 4000.0
+            "lo": 3687.08,
+            "hi": 4177.75
           },
           "self_consumed_kwh": {
             "lo": 141.25,
             "hi": 254.25
           },
           "exported_kwh": {
-            "lo": 58.25,
-            "hi": 192.08
+            "lo": 53.01,
+            "hi": 206.9
           },
           "annual_self_consumed_kwh": {
             "lo": 1695.0,
             "hi": 3051.0
           },
           "annual_exported_kwh": {
-            "lo": 699.0,
-            "hi": 2305.0
+            "lo": 636.08,
+            "hi": 2482.75
           },
           "annual_bill_savings": {
             "lo": 19577.25,
@@ -730,31 +730,31 @@
             "hi": 4.9
           },
           "effective_rate": {
-            "lo": 4.8943,
-            "hi": 8.4974
+            "lo": 4.6861,
+            "hi": 8.6425
           }
         },
         {
           "kwp": 3.0,
           "annual_generation": {
-            "lo": 4500.0,
-            "hi": 4800.0
+            "lo": 4424.49,
+            "hi": 5013.3
           },
           "self_consumed_kwh": {
             "lo": 141.25,
             "hi": 254.25
           },
           "exported_kwh": {
-            "lo": 120.75,
-            "hi": 258.75
+            "lo": 114.46,
+            "hi": 276.53
           },
           "annual_self_consumed_kwh": {
             "lo": 1695.0,
             "hi": 3051.0
           },
           "annual_exported_kwh": {
-            "lo": 1449.0,
-            "hi": 3105.0
+            "lo": 1373.49,
+            "hi": 3318.3
           },
           "annual_bill_savings": {
             "lo": 19577.25,
@@ -790,8 +790,8 @@
             "hi": 6.4
           },
           "effective_rate": {
-            "lo": 4.0786,
-            "hi": 7.0812
+            "lo": 3.9051,
+            "hi": 7.2021
           }
         }
       ],
@@ -806,7 +806,7 @@
       "assumptions_version": "tn-inland-2025",
       "subsidy_version": "pm-surya-ghar-2024",
       "assumptions_verified": false,
-      "yield_source": "REGIONAL_FALLBACK",
+      "yield_source": "BUILDING",
       "grid_feasibility": "NOT_VERIFIED",
       "grid_disclosure": "Grid connection is not verified. Official TNPDCL feasibility is required before installation."
     },
@@ -818,24 +818,24 @@
         {
           "kwp": 0.5,
           "annual_generation": {
-            "lo": 750.0,
-            "hi": 800.0
+            "lo": 737.41,
+            "hi": 835.55
           },
           "self_consumed_kwh": {
             "lo": 9.5,
             "hi": 23.75
           },
           "exported_kwh": {
-            "lo": 38.75,
-            "hi": 57.17
+            "lo": 37.7,
+            "hi": 60.13
           },
           "annual_self_consumed_kwh": {
             "lo": 114.0,
             "hi": 285.0
           },
           "annual_exported_kwh": {
-            "lo": 465.0,
-            "hi": 686.0
+            "lo": 452.41,
+            "hi": 721.55
           },
           "annual_bill_savings": {
             "lo": 0.0,
@@ -875,24 +875,24 @@
         {
           "kwp": 1.0,
           "annual_generation": {
-            "lo": 1500.0,
-            "hi": 1600.0
+            "lo": 1474.82,
+            "hi": 1671.09
           },
           "self_consumed_kwh": {
             "lo": 9.5,
             "hi": 23.75
           },
           "exported_kwh": {
-            "lo": 101.25,
-            "hi": 123.83
+            "lo": 99.15,
+            "hi": 129.76
           },
           "annual_self_consumed_kwh": {
             "lo": 114.0,
             "hi": 285.0
           },
           "annual_exported_kwh": {
-            "lo": 1215.0,
-            "hi": 1486.0
+            "lo": 1189.82,
+            "hi": 1557.09
           },
           "annual_bill_savings": {
             "lo": 0.0,
@@ -932,24 +932,24 @@
         {
           "kwp": 1.5,
           "annual_generation": {
-            "lo": 2250.0,
-            "hi": 2400.0
+            "lo": 2212.23,
+            "hi": 2506.64
           },
           "self_consumed_kwh": {
             "lo": 9.5,
             "hi": 23.75
           },
           "exported_kwh": {
-            "lo": 163.75,
-            "hi": 190.5
+            "lo": 160.6,
+            "hi": 199.39
           },
           "annual_self_consumed_kwh": {
             "lo": 114.0,
             "hi": 285.0
           },
           "annual_exported_kwh": {
-            "lo": 1965.0,
-            "hi": 2286.0
+            "lo": 1927.23,
+            "hi": 2392.64
           },
           "annual_bill_savings": {
             "lo": 0.0,
@@ -989,24 +989,24 @@
         {
           "kwp": 2.0,
           "annual_generation": {
-            "lo": 3000.0,
-            "hi": 3200.0
+            "lo": 2949.64,
+            "hi": 3342.18
           },
           "self_consumed_kwh": {
             "lo": 9.5,
             "hi": 23.75
           },
           "exported_kwh": {
-            "lo": 226.25,
-            "hi": 257.17
+            "lo": 222.05,
+            "hi": 269.02
           },
           "annual_self_consumed_kwh": {
             "lo": 114.0,
             "hi": 285.0
           },
           "annual_exported_kwh": {
-            "lo": 2715.0,
-            "hi": 3086.0
+            "lo": 2664.64,
+            "hi": 3228.18
           },
           "annual_bill_savings": {
             "lo": 0.0,
@@ -1046,24 +1046,24 @@
         {
           "kwp": 2.5,
           "annual_generation": {
-            "lo": 3750.0,
-            "hi": 4000.0
+            "lo": 3687.05,
+            "hi": 4177.73
           },
           "self_consumed_kwh": {
             "lo": 9.5,
             "hi": 23.75
           },
           "exported_kwh": {
-            "lo": 288.75,
-            "hi": 323.83
+            "lo": 283.5,
+            "hi": 338.64
           },
           "annual_self_consumed_kwh": {
             "lo": 114.0,
             "hi": 285.0
           },
           "annual_exported_kwh": {
-            "lo": 3465.0,
-            "hi": 3886.0
+            "lo": 3402.05,
+            "hi": 4063.73
           },
           "annual_bill_savings": {
             "lo": 0.0,
@@ -1103,24 +1103,24 @@
         {
           "kwp": 3.0,
           "annual_generation": {
-            "lo": 4500.0,
-            "hi": 4800.0
+            "lo": 4424.46,
+            "hi": 5013.27
           },
           "self_consumed_kwh": {
             "lo": 9.5,
             "hi": 23.75
           },
           "exported_kwh": {
-            "lo": 351.25,
-            "hi": 390.5
+            "lo": 344.96,
+            "hi": 408.27
           },
           "annual_self_consumed_kwh": {
             "lo": 114.0,
             "hi": 285.0
           },
           "annual_exported_kwh": {
-            "lo": 4215.0,
-            "hi": 4686.0
+            "lo": 4139.46,
+            "hi": 4899.27
           },
           "annual_bill_savings": {
             "lo": 0.0,
@@ -1169,7 +1169,7 @@
       "assumptions_version": "tn-inland-2025",
       "subsidy_version": "pm-surya-ghar-2024",
       "assumptions_verified": false,
-      "yield_source": "REGIONAL_FALLBACK",
+      "yield_source": "BUILDING",
       "grid_feasibility": "NOT_VERIFIED",
       "grid_disclosure": "Grid connection is not verified. Official TNPDCL feasibility is required before installation."
     },
@@ -1179,28 +1179,28 @@
       "recommended": {
         "kwp": 2.5,
         "annual_generation": {
-          "lo": 3750.0,
-          "hi": 4000.0
+          "lo": 3696.93,
+          "hi": 4188.8
         },
         "self_consumed_kwh": {
-          "lo": 312.5,
-          "hi": 333.33
+          "lo": 308.08,
+          "hi": 349.07
         },
         "exported_kwh": {
           "lo": 0.0,
           "hi": 0.0
         },
         "annual_self_consumed_kwh": {
-          "lo": 3750.0,
-          "hi": 4000.0
+          "lo": 3696.93,
+          "hi": 4188.8
         },
         "annual_exported_kwh": {
           "lo": 0.0,
           "hi": 0.0
         },
         "annual_bill_savings": {
-          "lo": 43312.5,
-          "hi": 46200.0
+          "lo": 42699.48,
+          "hi": 48380.64
         },
         "annual_export_credit": {
           "lo": 0.0,
@@ -1211,8 +1211,8 @@
           "hi": 3000.0
         },
         "annual_net_benefit": {
-          "lo": 40312.5,
-          "hi": 44700.0
+          "lo": 39699.48,
+          "hi": 46880.64
         },
         "gross_capex": {
           "lo": 112500.0,
@@ -1224,44 +1224,44 @@
           "hi": 81000.0
         },
         "npv": {
-          "lo": 291327.03,
-          "hi": 502832.95
+          "lo": 285665.2,
+          "hi": 529485.2
         },
         "payback_years": {
-          "lo": 1.0,
+          "lo": 0.9,
           "hi": 2.0
         },
         "effective_rate": {
-          "lo": 10.8281,
-          "hi": 12.32
+          "lo": 10.1937,
+          "hi": 13.0867
         }
       },
       "curve": [
         {
           "kwp": 0.5,
           "annual_generation": {
-            "lo": 750.0,
-            "hi": 800.0
+            "lo": 739.39,
+            "hi": 837.76
           },
           "self_consumed_kwh": {
-            "lo": 62.5,
-            "hi": 66.67
+            "lo": 61.62,
+            "hi": 69.81
           },
           "exported_kwh": {
             "lo": 0.0,
             "hi": 0.0
           },
           "annual_self_consumed_kwh": {
-            "lo": 750.0,
-            "hi": 800.0
+            "lo": 739.39,
+            "hi": 837.76
           },
           "annual_exported_kwh": {
             "lo": 0.0,
             "hi": 0.0
           },
           "annual_bill_savings": {
-            "lo": 8662.5,
-            "hi": 9240.0
+            "lo": 8539.9,
+            "hi": 9676.13
           },
           "annual_export_credit": {
             "lo": 0.0,
@@ -1272,8 +1272,8 @@
             "hi": 600.0
           },
           "annual_net_benefit": {
-            "lo": 8062.5,
-            "hi": 8940.0
+            "lo": 7939.9,
+            "hi": 9376.13
           },
           "gross_capex": {
             "lo": 22500.0,
@@ -1285,43 +1285,43 @@
             "hi": 15000.0
           },
           "npv": {
-            "lo": 59465.41,
-            "hi": 101766.59
+            "lo": 58333.04,
+            "hi": 107097.04
           },
           "payback_years": {
             "lo": 0.8,
             "hi": 1.9
           },
           "effective_rate": {
-            "lo": 10.8281,
-            "hi": 12.32
+            "lo": 10.1937,
+            "hi": 13.0867
           }
         },
         {
           "kwp": 1.0,
           "annual_generation": {
-            "lo": 1500.0,
-            "hi": 1600.0
+            "lo": 1478.77,
+            "hi": 1675.52
           },
           "self_consumed_kwh": {
-            "lo": 125.0,
-            "hi": 133.33
+            "lo": 123.23,
+            "hi": 139.63
           },
           "exported_kwh": {
             "lo": 0.0,
             "hi": 0.0
           },
           "annual_self_consumed_kwh": {
-            "lo": 1500.0,
-            "hi": 1600.0
+            "lo": 1478.77,
+            "hi": 1675.52
           },
           "annual_exported_kwh": {
             "lo": 0.0,
             "hi": 0.0
           },
           "annual_bill_savings": {
-            "lo": 17325.0,
-            "hi": 18480.0
+            "lo": 17079.79,
+            "hi": 19352.26
           },
           "annual_export_credit": {
             "lo": 0.0,
@@ -1332,8 +1332,8 @@
             "hi": 1200.0
           },
           "annual_net_benefit": {
-            "lo": 16125.0,
-            "hi": 17880.0
+            "lo": 15879.79,
+            "hi": 18752.26
           },
           "gross_capex": {
             "lo": 45000.0,
@@ -1345,43 +1345,43 @@
             "hi": 30000.0
           },
           "npv": {
-            "lo": 118930.81,
-            "hi": 203533.18
+            "lo": 116666.08,
+            "hi": 214194.08
           },
           "payback_years": {
             "lo": 0.8,
             "hi": 1.9
           },
           "effective_rate": {
-            "lo": 10.8281,
-            "hi": 12.32
+            "lo": 10.1937,
+            "hi": 13.0867
           }
         },
         {
           "kwp": 1.5,
           "annual_generation": {
-            "lo": 2250.0,
-            "hi": 2400.0
+            "lo": 2218.16,
+            "hi": 2513.28
           },
           "self_consumed_kwh": {
-            "lo": 187.5,
-            "hi": 200.0
+            "lo": 184.85,
+            "hi": 209.44
           },
           "exported_kwh": {
             "lo": 0.0,
             "hi": 0.0
           },
           "annual_self_consumed_kwh": {
-            "lo": 2250.0,
-            "hi": 2400.0
+            "lo": 2218.16,
+            "hi": 2513.28
           },
           "annual_exported_kwh": {
             "lo": 0.0,
             "hi": 0.0
           },
           "annual_bill_savings": {
-            "lo": 25987.5,
-            "hi": 27720.0
+            "lo": 25619.69,
+            "hi": 29028.38
           },
           "annual_export_credit": {
             "lo": 0.0,
@@ -1392,8 +1392,8 @@
             "hi": 1800.0
           },
           "annual_net_benefit": {
-            "lo": 24187.5,
-            "hi": 26820.0
+            "lo": 23819.69,
+            "hi": 28128.38
           },
           "gross_capex": {
             "lo": 67500.0,
@@ -1405,43 +1405,43 @@
             "hi": 45000.0
           },
           "npv": {
-            "lo": 178396.22,
-            "hi": 305299.77
+            "lo": 174999.12,
+            "hi": 321291.12
           },
           "payback_years": {
             "lo": 0.8,
             "hi": 1.9
           },
           "effective_rate": {
-            "lo": 10.8281,
-            "hi": 12.32
+            "lo": 10.1937,
+            "hi": 13.0867
           }
         },
         {
           "kwp": 2.0,
           "annual_generation": {
-            "lo": 3000.0,
-            "hi": 3200.0
+            "lo": 2957.54,
+            "hi": 3351.04
           },
           "self_consumed_kwh": {
-            "lo": 250.0,
-            "hi": 266.67
+            "lo": 246.46,
+            "hi": 279.25
           },
           "exported_kwh": {
             "lo": 0.0,
             "hi": 0.0
           },
           "annual_self_consumed_kwh": {
-            "lo": 3000.0,
-            "hi": 3200.0
+            "lo": 2957.54,
+            "hi": 3351.04
           },
           "annual_exported_kwh": {
             "lo": 0.0,
             "hi": 0.0
           },
           "annual_bill_savings": {
-            "lo": 34650.0,
-            "hi": 36960.0
+            "lo": 34159.59,
+            "hi": 38704.51
           },
           "annual_export_credit": {
             "lo": 0.0,
@@ -1452,8 +1452,8 @@
             "hi": 2400.0
           },
           "annual_net_benefit": {
-            "lo": 32250.0,
-            "hi": 35760.0
+            "lo": 31759.59,
+            "hi": 37504.51
           },
           "gross_capex": {
             "lo": 90000.0,
@@ -1465,43 +1465,43 @@
             "hi": 60000.0
           },
           "npv": {
-            "lo": 237861.63,
-            "hi": 407066.36
+            "lo": 233332.16,
+            "hi": 428388.16
           },
           "payback_years": {
             "lo": 0.8,
             "hi": 1.9
           },
           "effective_rate": {
-            "lo": 10.8281,
-            "hi": 12.32
+            "lo": 10.1937,
+            "hi": 13.0867
           }
         },
         {
           "kwp": 2.5,
           "annual_generation": {
-            "lo": 3750.0,
-            "hi": 4000.0
+            "lo": 3696.93,
+            "hi": 4188.8
           },
           "self_consumed_kwh": {
-            "lo": 312.5,
-            "hi": 333.33
+            "lo": 308.08,
+            "hi": 349.07
           },
           "exported_kwh": {
             "lo": 0.0,
             "hi": 0.0
           },
           "annual_self_consumed_kwh": {
-            "lo": 3750.0,
-            "hi": 4000.0
+            "lo": 3696.93,
+            "hi": 4188.8
           },
           "annual_exported_kwh": {
             "lo": 0.0,
             "hi": 0.0
           },
           "annual_bill_savings": {
-            "lo": 43312.5,
-            "hi": 46200.0
+            "lo": 42699.48,
+            "hi": 48380.64
           },
           "annual_export_credit": {
             "lo": 0.0,
@@ -1512,8 +1512,8 @@
             "hi": 3000.0
           },
           "annual_net_benefit": {
-            "lo": 40312.5,
-            "hi": 44700.0
+            "lo": 39699.48,
+            "hi": 46880.64
           },
           "gross_capex": {
             "lo": 112500.0,
@@ -1525,16 +1525,16 @@
             "hi": 81000.0
           },
           "npv": {
-            "lo": 291327.03,
-            "hi": 502832.95
+            "lo": 285665.2,
+            "hi": 529485.2
           },
           "payback_years": {
-            "lo": 1.0,
+            "lo": 0.9,
             "hi": 2.0
           },
           "effective_rate": {
-            "lo": 10.8281,
-            "hi": 12.32
+            "lo": 10.1937,
+            "hi": 13.0867
           }
         }
       ],
@@ -1549,7 +1549,7 @@
       "assumptions_version": "tn-inland-2025",
       "subsidy_version": "pm-surya-ghar-2024",
       "assumptions_verified": false,
-      "yield_source": "REGIONAL_FALLBACK",
+      "yield_source": "BUILDING",
       "grid_feasibility": "NOT_VERIFIED",
       "grid_disclosure": "Grid connection is not verified. Official TNPDCL feasibility is required before installation."
     },
@@ -1559,24 +1559,24 @@
       "recommended": {
         "kwp": 0.5,
         "annual_generation": {
-          "lo": 750.0,
-          "hi": 800.0
+          "lo": 737.4,
+          "hi": 835.53
         },
         "self_consumed_kwh": {
           "lo": 52.0,
-          "hi": 66.67
+          "hi": 69.63
         },
         "exported_kwh": {
           "lo": 0.0,
-          "hi": 14.67
+          "hi": 17.63
         },
         "annual_self_consumed_kwh": {
           "lo": 624.0,
-          "hi": 800.0
+          "hi": 835.53
         },
         "annual_exported_kwh": {
           "lo": 0.0,
-          "hi": 176.0
+          "hi": 211.53
         },
         "annual_bill_savings": {
           "lo": 1692.0,
@@ -1612,32 +1612,32 @@
           "hi": 13.7
         },
         "effective_rate": {
-          "lo": 2.115,
-          "hi": 2.256
+          "lo": 2.0251,
+          "hi": 2.2945
         }
       },
       "curve": [
         {
           "kwp": 0.5,
           "annual_generation": {
-            "lo": 750.0,
-            "hi": 800.0
+            "lo": 737.4,
+            "hi": 835.53
           },
           "self_consumed_kwh": {
             "lo": 52.0,
-            "hi": 66.67
+            "hi": 69.63
           },
           "exported_kwh": {
             "lo": 0.0,
-            "hi": 14.67
+            "hi": 17.63
           },
           "annual_self_consumed_kwh": {
             "lo": 624.0,
-            "hi": 800.0
+            "hi": 835.53
           },
           "annual_exported_kwh": {
             "lo": 0.0,
-            "hi": 176.0
+            "hi": 211.53
           },
           "annual_bill_savings": {
             "lo": 1692.0,
@@ -1673,31 +1673,31 @@
             "hi": 13.7
           },
           "effective_rate": {
-            "lo": 2.115,
-            "hi": 2.256
+            "lo": 2.0251,
+            "hi": 2.2945
           }
         },
         {
           "kwp": 1.0,
           "annual_generation": {
-            "lo": 1500.0,
-            "hi": 1600.0
+            "lo": 1474.8,
+            "hi": 1671.06
           },
           "self_consumed_kwh": {
             "lo": 52.0,
             "hi": 78.0
           },
           "exported_kwh": {
-            "lo": 47.0,
-            "hi": 81.33
+            "lo": 44.9,
+            "hi": 87.26
           },
           "annual_self_consumed_kwh": {
             "lo": 624.0,
             "hi": 936.0
           },
           "annual_exported_kwh": {
-            "lo": 564.0,
-            "hi": 976.0
+            "lo": 538.8,
+            "hi": 1047.06
           },
           "annual_bill_savings": {
             "lo": 1692.0,
@@ -1733,31 +1733,31 @@
             "hi": 61.0
           },
           "effective_rate": {
-            "lo": 1.0575,
-            "hi": 1.128
+            "lo": 1.0125,
+            "hi": 1.1473
           }
         },
         {
           "kwp": 1.5,
           "annual_generation": {
-            "lo": 2250.0,
-            "hi": 2400.0
+            "lo": 2212.2,
+            "hi": 2506.59
           },
           "self_consumed_kwh": {
             "lo": 52.0,
             "hi": 78.0
           },
           "exported_kwh": {
-            "lo": 109.5,
-            "hi": 148.0
+            "lo": 106.35,
+            "hi": 156.88
           },
           "annual_self_consumed_kwh": {
             "lo": 624.0,
             "hi": 936.0
           },
           "annual_exported_kwh": {
-            "lo": 1314.0,
-            "hi": 1776.0
+            "lo": 1276.2,
+            "hi": 1882.59
           },
           "annual_bill_savings": {
             "lo": 1692.0,
@@ -1790,31 +1790,31 @@
           },
           "payback_years": null,
           "effective_rate": {
-            "lo": 0.705,
-            "hi": 0.752
+            "lo": 0.675,
+            "hi": 0.7648
           }
         },
         {
           "kwp": 2.0,
           "annual_generation": {
-            "lo": 3000.0,
-            "hi": 3200.0
+            "lo": 2949.6,
+            "hi": 3342.12
           },
           "self_consumed_kwh": {
             "lo": 52.0,
             "hi": 78.0
           },
           "exported_kwh": {
-            "lo": 172.0,
-            "hi": 214.67
+            "lo": 167.8,
+            "hi": 226.51
           },
           "annual_self_consumed_kwh": {
             "lo": 624.0,
             "hi": 936.0
           },
           "annual_exported_kwh": {
-            "lo": 2064.0,
-            "hi": 2576.0
+            "lo": 2013.6,
+            "hi": 2718.12
           },
           "annual_bill_savings": {
             "lo": 1692.0,
@@ -1847,31 +1847,31 @@
           },
           "payback_years": null,
           "effective_rate": {
-            "lo": 0.5288,
-            "hi": 0.564
+            "lo": 0.5063,
+            "hi": 0.5736
           }
         },
         {
           "kwp": 2.5,
           "annual_generation": {
-            "lo": 3750.0,
-            "hi": 4000.0
+            "lo": 3687.0,
+            "hi": 4177.65
           },
           "self_consumed_kwh": {
             "lo": 52.0,
             "hi": 78.0
           },
           "exported_kwh": {
-            "lo": 234.5,
-            "hi": 281.33
+            "lo": 229.25,
+            "hi": 296.14
           },
           "annual_self_consumed_kwh": {
             "lo": 624.0,
             "hi": 936.0
           },
           "annual_exported_kwh": {
-            "lo": 2814.0,
-            "hi": 3376.0
+            "lo": 2751.0,
+            "hi": 3553.65
           },
           "annual_bill_savings": {
             "lo": 1692.0,
@@ -1904,31 +1904,31 @@
           },
           "payback_years": null,
           "effective_rate": {
-            "lo": 0.423,
-            "hi": 0.4512
+            "lo": 0.405,
+            "hi": 0.4589
           }
         },
         {
           "kwp": 3.0,
           "annual_generation": {
-            "lo": 4500.0,
-            "hi": 4800.0
+            "lo": 4424.4,
+            "hi": 5013.18
           },
           "self_consumed_kwh": {
             "lo": 52.0,
             "hi": 78.0
           },
           "exported_kwh": {
-            "lo": 297.0,
-            "hi": 348.0
+            "lo": 290.7,
+            "hi": 365.77
           },
           "annual_self_consumed_kwh": {
             "lo": 624.0,
             "hi": 936.0
           },
           "annual_exported_kwh": {
-            "lo": 3564.0,
-            "hi": 4176.0
+            "lo": 3488.4,
+            "hi": 4389.18
           },
           "annual_bill_savings": {
             "lo": 1692.0,
@@ -1961,8 +1961,8 @@
           },
           "payback_years": null,
           "effective_rate": {
-            "lo": 0.3525,
-            "hi": 0.376
+            "lo": 0.3375,
+            "hi": 0.3824
           }
         }
       ],
@@ -1977,7 +1977,7 @@
       "assumptions_version": "tn-inland-2025",
       "subsidy_version": "pm-surya-ghar-2024",
       "assumptions_verified": false,
-      "yield_source": "REGIONAL_FALLBACK",
+      "yield_source": "BUILDING",
       "grid_feasibility": "NOT_VERIFIED",
       "grid_disclosure": "Grid connection is not verified. Official TNPDCL feasibility is required before installation."
     }

@@ -1,0 +1,20 @@
+# web.Dockerfile runs `npm ci` and THEN `COPY . .`, so anything left here
+# overwrites what the container just installed.
+#
+# node_modules is the one that matters and it fails in a confusing way. esbuild
+# and rollup ship per-platform binaries (@esbuild/win32-x64 against
+# @esbuild/linux-x64), so a host install done on Windows lands inside an alpine
+# image and `npm run build` dies claiming the wrong binary is installed -- with
+# nothing on screen to suggest the cause is a file that was copied over the top
+# of a correct install.
+node_modules
+dist
+.vite
+
+# Never bake a local environment into an image whose build args already carry
+# the one value the bundle needs (VITE_API_BASE_URL).
+.env
+.env.*
+!.env.example
+
+.DS_Store

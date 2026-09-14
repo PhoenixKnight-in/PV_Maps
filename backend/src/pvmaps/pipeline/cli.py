@@ -148,20 +148,58 @@ def seed(
         )
 
 
+def _roof_targets(pilot: bool, building_id: str | None) -> list[tuple[str, float, float]]:
+    """`(id, lat, lon)` per roof, from `PILOT_ROOFS` or from the database.
+
+    Both `yield` and `segment` site a roof at its own centroid, and they have to
+    agree about where that is: a yield computed for one point and a mask cut
+    around another describe different roofs while looking like one result.
+    """
+    if pilot:
+        from pvmaps.pipeline.seed import PILOT_ROOFS
+
+        return [
+            (r.building_id, r.lat, r.lon)
+            for r in PILOT_ROOFS
+            if building_id is None or r.building_id == building_id
+        ]
+
+    with _connect() as conn, conn.cursor() as cur:
+        sql = "SELECT id, ST_Y(ST_Centroid(geom)), ST_X(ST_Centroid(geom)) FROM buildings"
+        if building_id:
+            cur.execute(f"{sql} WHERE id = %s", (building_id,))
+        else:
+            cur.execute(f"{sql} ORDER BY id")
+        return [(r[0], float(r[1]), float(r[2])) for r in cur.fetchall()]
+
+
 @app.command("yield")
 def yield_command(
     building_id: Annotated[str | None, typer.Option(help="One building. Omit for all.")] = None,
+    pilot: Annotated[
+        bool, typer.Option(help="Take the roofs from PILOT_ROOFS instead of the database.")
+    ] = False,
     lat: Annotated[float, typer.Option(help="Latitude for the fallback site.")] = VELLORE[0],
     lon: Annotated[float, typer.Option(help="Longitude for the fallback site.")] = VELLORE[1],
     tilt: Annotated[float | None, typer.Option(help="Degrees. Omit to scan for the best.")] = None,
     azimuth: Annotated[float, typer.Option(help="Degrees from north. 180 is due south.")] = 180.0,
-    dry_run: Annotated[bool, typer.Option(help="Compute and print; write nothing.")] = False,
+    dry_run: Annotated[bool, typer.Option(help="Print; write no database row.")] = False,
+    out: Annotated[
+        Path | None, typer.Option(help="Also write the rows as JSON, for `seed` to load.")
+    ] = None,
 ) -> None:
     """FR-2 — pvlib yield for pilot roofs, written to `roof_analyses`.
 
     Each building is sited at its own centroid, so a pilot area spanning a few
     kilometres still gets one solar geometry per roof rather than one for the
     whole ward.
+
+    `--pilot` reads the centroids from `pipeline.seed.PILOT_ROOFS` — the same
+    tuple the seeder writes — so the physics can be run on a machine that has a
+    GPU image but no database, which is the usual order in which those two
+    appear. Combined with `--out` it regenerates the committed fixture:
+
+        pipeline yield --pilot --dry-run --out src/pvmaps/pipeline/analyses/pilot_roof_analyses.json
     """
     _require("pvlib", "pipeline", "yield")
 
@@ -171,23 +209,16 @@ def yield_command(
     assumptions = load_assumptions()
 
     targets: list[tuple[str, float, float]]
-    if dry_run and building_id is None:
+    if not pilot and dry_run and building_id is None:
         targets = [("(dry-run)", lat, lon)]
     else:
-        with _connect() as conn, conn.cursor() as cur:
-            sql = (
-                "SELECT id, ST_Y(ST_Centroid(geom)), ST_X(ST_Centroid(geom)) FROM buildings"
-            )
-            if building_id:
-                cur.execute(f"{sql} WHERE id = %s", (building_id,))
-            else:
-                cur.execute(f"{sql} ORDER BY id")
-            targets = [(r[0], float(r[1]), float(r[2])) for r in cur.fetchall()]
+        targets = _roof_targets(pilot, building_id)
 
     if not targets:
         typer.secho("No buildings found. Run `seed` first.", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
+    rows: list[dict[str, Any]] = []
     for bid, blat, blon in targets:
         result = annual_yield(blat, blon, assumptions, tilt=tilt, azimuth=azimuth)
         agrees = result.agrees_with_published_band(assumptions)
@@ -196,21 +227,231 @@ def yield_command(
             f"tilt {result.tilt_deg:>4.1f} deg  {result.irradiance_source}"
         )
         if not agrees:
-            # PRD 10 (acceptance criteria): output outside the published band is evidence the physics
-            # is wrong, not a reason to widen the band.
+            # PRD 10 (acceptance criteria): output outside the published band is
+            # evidence the physics is wrong, not a reason to widen the band.
             typer.secho(
                 f"    OUTSIDE the published band {assumptions.specific_yield}. "
                 f"Check the physics before widening anything.",
                 fg=typer.colors.RED,
             )
-        if dry_run:
+        rows.append(as_roof_analysis_row(result, bid))
+
+    if out:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
+        typer.echo(f"\nwrote {len(rows)} rows to {out}")
+
+    if dry_run:
+        return
+
+    # One connection for the batch. Reopening per roof was harmless at five and
+    # is not the shape to grow a ward into.
+    from pvmaps.pipeline.seed import write_roof_analysis
+
+    with _connect() as conn:
+        for row in rows:
+            write_roof_analysis(conn, row)
+
+
+@app.command()
+def segment(
+    building_id: Annotated[str | None, typer.Option(help="One building. Omit for all.")] = None,
+    pilot: Annotated[
+        bool, typer.Option(help="Take the roofs from PILOT_ROOFS instead of the database.")
+    ] = False,
+    checkpoint: Annotated[
+        Path, typer.Option(help="SAM2 weights (.pt). See `fetch-checkpoint`.")
+    ] = Path("/checkpoints/sam2.1_hiera_small.pt"),
+    model_cfg: Annotated[
+        str, typer.Option(help="SAM2 hydra config name, matched to the checkpoint.")
+    ] = "configs/sam2.1/sam2.1_hiera_s.yaml",
+    zoom: Annotated[int, typer.Option(help="Tile zoom. FR-1.1 wants 19-20.")] = 19,
+    radius_tiles: Annotated[int, typer.Option(help="Tiles around centre; 1 gives 3x3.")] = 1,
+    data_dir: Annotated[Path, typer.Option(help="Imagery cache root.")] = Path("/data"),
+    out: Annotated[Path | None, typer.Option(help="Write predicted roofs as GeoJSON.")] = None,
+    min_area_m2: Annotated[float, typer.Option(help="Ignore masks smaller than this.")] = 20.0,
+) -> None:
+    """FR-1.1 — SAM2 roof masks on the GPU. The only GPU-bound command here.
+
+    This is the caller `roofs.propose_masks` never had. The chain is:
+
+        imagery.mosaic      tiles around the centroid, EPSG:3857 + Affine
+        roofs.propose_masks SAM2 automatic mask generation          <- GPU
+        roofs.mask_to_polygons  raster mask -> vector, in 3857
+        imagery.to_wgs84_polygons   -> 4326, the storage CRS
+
+    PRD 9 is explicit that segmentation is precomputed and never run live on
+    stage, so this writes a file; nothing in the request path can reach it.
+
+    **Mask selection is a placeholder and says so.** FR-1.1 calls for a
+    roof/not-roof classifier to rank SAM2's proposals. There isn't one, so this
+    picks the smallest mask that contains the roof centroid and is larger than
+    `--min-area-m2` — a geometric heuristic, not a classifier. It is good enough
+    to produce candidate outlines for a person to correct, which is the workflow
+    PRD 12 already prescribes, and it is NOT good enough to report an IoU against.
+    """
+    _require("torch", "pipeline", "segment")
+    _require("rasterio", "pipeline", "segment")
+
+    from shapely.geometry import Point, mapping
+
+    from pvmaps.pipeline.imagery import mosaic, to_web_mercator, to_wgs84_polygons
+    from pvmaps.pipeline.roofs import (
+        area_m2,
+        build_image_predictor,
+        mask_to_polygons,
+        masks_at_point,
+    )
+
+    if not checkpoint.exists():
+        typer.secho(
+            f"No SAM2 checkpoint at {checkpoint}.\n"
+            f"  pipeline fetch-checkpoint --out {checkpoint}\n"
+            f"and make sure --model-cfg matches the weights you fetched.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=2)
+
+    targets = _roof_targets(pilot, building_id)
+    if not targets:
+        typer.secho("No buildings found. Run `seed` first.", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    import torch
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cpu":
+        # Not refused -- it works, it is just slow enough that somebody should
+        # know they are doing it before they wait.
+        typer.secho(
+            "CUDA is not available; SAM2 will run on CPU and take minutes per roof.",
+            fg=typer.colors.YELLOW,
+        )
+    else:
+        typer.echo(f"  device  {torch.cuda.get_device_name(0)}")
+
+    # One model load for the whole run, not one per roof.
+    predictor = build_image_predictor(str(checkpoint), model_cfg)
+
+    features = []
+    for bid, lat, lon in targets:
+        image, transform = mosaic(
+            lat, lon, z=zoom, radius_tiles=radius_tiles, data_dir=data_dir
+        )
+        centre = Point(*to_web_mercator(lon, lat))
+        px, py = ~transform @ (centre.x, centre.y)
+        scored = masks_at_point(predictor, image, px, py)
+
+        # SAM2 offers the same point at three scales. Keep the polygon that
+        # actually covers the surveyed point and clears the area floor, then let
+        # the model's own score break the tie -- smallest-first would
+        # systematically prefer a single roof PLANE over the roof.
+        candidates = []
+        for mask, score in scored:
+            for poly in mask_to_polygons(mask, transform):
+                if not poly.contains(centre):
+                    continue
+                wgs = to_wgs84_polygons([poly])[0]
+                m2 = area_m2(wgs)
+                if m2 >= min_area_m2:
+                    candidates.append((score, m2, wgs))
+
+        if not candidates:
+            typer.secho(
+                f"  {bid:18} nothing at the surveyed point above {min_area_m2} m2 "
+                f"({len(scored)} masks offered)",
+                fg=typer.colors.YELLOW,
+            )
             continue
 
-        row = as_roof_analysis_row(result, bid)
-        from pvmaps.pipeline.seed import write_roof_analysis
+        # EVERY qualifying scale is emitted, not the best-scoring one.
+        #
+        # Measured against the hand-corrected pilot areas, picking one by SAM2's
+        # own score lands between 0.1x and 84x of the truth (STATUS.md 12): the
+        # score says how cleanly a region was segmented, not whether the region
+        # is a roof. Emitting a single winner would dress that up as an answer.
+        # Emitting all three, ranked and measured, is what the hand-correction
+        # workflow in PRD 12 can actually use -- a person picks in one glance,
+        # and nothing here pretends to have picked for them.
+        candidates.sort(key=lambda c: -c[0])
+        summary = ", ".join(f"{m2:.0f}" for _, m2, _ in candidates)
+        typer.echo(
+            f"  {bid:18} {len(candidates)} scales at the surveyed point: "
+            f"{summary} m2  (best score {candidates[0][0]:.3f})"
+        )
+        for rank, (score, m2, geom) in enumerate(candidates, start=1):
+            features.append(
+                {
+                    "type": "Feature",
+                    "geometry": mapping(geom),
+                    "properties": {
+                        "id": bid,
+                        "rank": rank,
+                        "area_m2": round(m2, 2),
+                        "source": "SAM2_POINT_PROMPTED",
+                        "sam2_score": round(score, 4),
+                        "selection": (
+                            "one of several scales at the surveyed point; "
+                            "UNRANKED BY ROOFNESS -- pick by hand (no classifier)"
+                        ),
+                        "model_cfg": model_cfg,
+                        "checkpoint": checkpoint.name,
+                        "zoom": zoom,
+                    },
+                }
+            )
 
-        with _connect() as conn:
-            write_roof_analysis(conn, row)
+    if out and features:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(
+            json.dumps({"type": "FeatureCollection", "features": features}, indent=2),
+            encoding="utf-8",
+        )
+        typer.echo(f"\nwrote {len(features)} predicted roofs to {out}")
+
+    typer.secho(
+        "\nThese are PROPOSALS. PRD 12: hand-correct them before seeding, and do "
+        "not report an IoU computed against anything but hand-drawn ground truth.",
+        fg=typer.colors.YELLOW,
+    )
+
+
+@app.command("fetch-checkpoint")
+def fetch_checkpoint(
+    out: Annotated[Path, typer.Option(help="Where to write the .pt file.")] = Path(
+        "/checkpoints/sam2.1_hiera_small.pt"
+    ),
+    url: Annotated[
+        str, typer.Option(help="Source. Defaults to Meta's published SAM2.1 small.")
+    ] = "https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_small.pt",
+) -> None:
+    """Download SAM2 weights. Explicit, because weights are not in the image.
+
+    `docker/pipeline.Dockerfile` installs the SAM2 *code* from Meta's repository
+    but not the *weights*, which are hundreds of megabytes and would be baked
+    into every rebuild. `.gitignore` excludes `checkpoints/` and `*.pt` for the
+    same reason. So this is a separate, deliberate step rather than something
+    that happens silently the first time `segment` runs.
+
+    Small is the default because the pilot GPU has 6 GB: hiera_large wants more
+    than that at z19 with a 768 px mosaic.
+    """
+    if out.exists() and out.stat().st_size > 0:
+        typer.echo(f"{out} already present ({out.stat().st_size / 1e6:.0f} MB)")
+        return
+
+    import requests
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    typer.echo(f"fetching {url}")
+    with requests.get(url, stream=True, timeout=120) as response:
+        response.raise_for_status()
+        written = 0
+        with out.open("wb") as fh:
+            for chunk in response.iter_content(chunk_size=1 << 20):
+                fh.write(chunk)
+                written += len(chunk)
+    typer.echo(f"wrote {out} ({written / 1e6:.0f} MB)")
 
 
 @app.command()

@@ -38,7 +38,11 @@ async function request<T>(
     } catch {
       detail = await res.text().catch(() => undefined);
     }
-    throw new ApiError(`${init?.method ?? "GET"} ${path} failed`, res.status, detail);
+    throw new ApiError(
+      `${init?.method ?? "GET"} ${path} failed`,
+      res.status,
+      detail,
+    );
   }
 
   // Parse, do not trust. A schema drift between Pydantic and Zod should fail
@@ -57,7 +61,72 @@ export interface CallOptions {
   signal?: AbortSignal;
 }
 
+export interface GeocodeHit {
+  display_name: string;
+  lat: number;
+  lon: number;
+  kind: string | null;
+}
+
+export interface RoofCandidate {
+  geometry: GeoJSON.Polygon;
+  area_m2: number;
+  sam2_score: number;
+  plausible: boolean;
+}
+
+export interface PanelLayout {
+  usable_geometry: GeoJSON.Polygon | null;
+  usable_area_m2: number;
+  panels: GeoJSON.FeatureCollection;
+  panel_count: number;
+  array_kwp: number;
+  panel_watts: number;
+  tilt_deg: number;
+  row_pitch_m: number;
+}
+
+export interface RoofAtResult {
+  lat: number;
+  lon: number;
+  zoom: number;
+  candidates: RoofCandidate[];
+  /** Index into `candidates`, or null when nothing was segmentable. */
+  chosen: number | null;
+  layout: PanelLayout | null;
+  source: string;
+  warning: string | null;
+}
+
 export const api = {
+  /**
+   * Free-text address anywhere in India, via the API's Nominatim proxy.
+   *
+   * Separate from `searchAddresses`, which resolves only the five seeded pilot
+   * roofs. Both are kept: the pilot rows carry hand-checked areas and a stored
+   * scenario, so they stay the better answer when the query matches one.
+   */
+  geocode: (q: string, opts?: CallOptions) =>
+    request<GeocodeHit[]>(
+      `/v1/geocode?q=${encodeURIComponent(q)}`,
+      (raw) => raw as GeocodeHit[],
+      opts,
+    ),
+
+  /**
+   * Measure the roof under a point, live, on the GPU.
+   *
+   * Slow by the standards of the rest of this client -- a cold tile cache means
+   * nine HTTPS fetches before SAM2 starts -- so callers must show progress
+   * rather than assuming this returns promptly.
+   */
+  roofAt: (lat: number, lon: number, opts?: CallOptions) =>
+    request<RoofAtResult>("/v1/roof-at", (raw) => raw as RoofAtResult, {
+      method: "POST",
+      body: JSON.stringify({ lat, lon }),
+      ...opts,
+    }),
+
   /** Pilot-address search. Resolves against our own table, not a live geocoder. */
   searchAddresses: (q: string, opts?: CallOptions) =>
     request(
@@ -75,11 +144,11 @@ export const api = {
 
   /** The confirmed profile is the calculation input. ARCHITECTURE.md 6. */
   createSizingRun: (profile: UsageProfile, opts?: CallOptions) =>
-    request(
-      "/v1/sizing-runs",
-      (raw) => RecommendationSchema.parse(raw),
-      { method: "POST", body: JSON.stringify(profile), ...opts },
-    ),
+    request("/v1/sizing-runs", (raw) => RecommendationSchema.parse(raw), {
+      method: "POST",
+      body: JSON.stringify(profile),
+      ...opts,
+    }),
 
   /**
    * Optional convenience only (ARCHITECTURE.md 4.3). Returns values to be
@@ -89,7 +158,10 @@ export const api = {
   extractBill: async (file: File): Promise<Partial<UsageProfile>> => {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch(`${BASE}/v1/bill-extract`, { method: "POST", body: form });
+    const res = await fetch(`${BASE}/v1/bill-extract`, {
+      method: "POST",
+      body: form,
+    });
     if (!res.ok) {
       throw new ApiError("Bill extraction failed", res.status);
     }
@@ -116,7 +188,9 @@ export async function loadDemoFallback(): Promise<{
 
 export async function isApiReachable(): Promise<boolean> {
   try {
-    const res = await fetch(`${BASE}/healthz`, { signal: AbortSignal.timeout(2000) });
+    const res = await fetch(`${BASE}/healthz`, {
+      signal: AbortSignal.timeout(2000),
+    });
     return res.ok;
   } catch {
     return false;

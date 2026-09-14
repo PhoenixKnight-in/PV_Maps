@@ -26,6 +26,10 @@ api = [
     "python-multipart>=0.0.12",   # POST /v1/bill-extract
     "structlog>=24.4",
     "orjson>=3.10",
+    # /v1/geocode and /v1/roof-at are outbound HTTP. httpx was previously a dev
+    # dependency only, so adding those routes without this line builds an API
+    # image that imports fine and 500s on the two new routes.
+    "httpx>=0.28",
 ]
 
 # Optional bill extraction (ARCHITECTURE.md 4.3). Convenience, not product
@@ -63,6 +67,7 @@ pipeline = [
     "numpy>=2.1",
     "pandas>=2.2",
     "psycopg[binary]>=3.2",       # sync driver: batch writes, not the read path
+    "pillow>=11.0",               # decodes the imagery tiles in pipeline/imagery.py
     "torch>=2.5",
     "torchvision>=0.20",
     # SAM2 is installed from git in the pipeline image, not resolved here.

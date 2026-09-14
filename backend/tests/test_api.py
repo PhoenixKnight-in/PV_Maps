@@ -86,7 +86,15 @@ async def api() -> AsyncIterator[tuple[httpx.AsyncClient, FakeRepository]]:
 
 async def test_phase_1_surface_is_exactly_what_the_architecture_lists() -> None:
     """ARCHITECTURE.md 5.2. An endpoint that is not on this list is scope creep,
-    and the list is short on purpose."""
+    and the list is short on purpose.
+
+    `/v1/geocode` and `/v1/roof-at` were added 2026-09-14 and are the deliberate
+    exception. They reverse PRD 9's "precompute all roof data, do not run
+    segmentation live", because a product that can only answer for five seeded
+    addresses cannot answer "what about my roof". Both are live outbound calls --
+    a geocoder and a GPU service -- which is exactly the dependency
+    ARCHITECTURE.md 9.3 avoided. The trade is recorded in STATUS.md 13.
+    """
     app, _ = make_app()
     paths = set(app.openapi()["paths"])
     assert paths == {
@@ -96,6 +104,8 @@ async def test_phase_1_surface_is_exactly_what_the_architecture_lists() -> None:
         "/v1/sizing-runs",
         "/v1/bill-extract",
         "/v1/tariffs/current",
+        "/v1/geocode",
+        "/v1/roof-at",
     }
 
 

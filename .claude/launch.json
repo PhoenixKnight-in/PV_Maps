@@ -2,7 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "pvmaps-web",
+      "name": "pvmaps",
+      "url": "http://localhost:8081",
+      "port": 8081
+    },
+    {
+      "name": "pvmaps-web-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "web"],
       "port": 5173

@@ -56,7 +56,30 @@ export const EstimateSchema = z.object({
  */
 export const UsageProfileSchema = z
   .object({
-    building_id: z.string().min(1, "Select an address first"),
+    /**
+     * Empty when the roof was measured live rather than seeded. The API's
+     * `traced_roof` branch takes over in that case -- see the refine below,
+     * which is what stops a request arriving with neither.
+     */
+    building_id: z.string().default(""),
+
+    /**
+     * A roof measured from imagery, sent the same way a hand-drawn one is.
+     *
+     * Reuses the API's existing `traced_roof` contract deliberately. Both are
+     * an outline with an area that never reaches the buildings table, and both
+     * must report REGIONAL_FALLBACK yield because no pvlib run exists for them.
+     * A parallel "measured_roof" field would have duplicated that whole branch
+     * to say the same thing.
+     */
+    traced_roof: z
+      .object({
+        lat: z.number(),
+        lon: z.number(),
+        roof_area_m2: z.number().positive(),
+        usable_area_m2: z.number().positive(),
+      })
+      .optional(),
 
     monthly_units_kwh: z.coerce
       .number({ invalid_type_error: "Enter the units from your bill" })
@@ -69,12 +92,18 @@ export const UsageProfileSchema = z
      * exact number the product exists to surface.
      */
     sanctioned_load_kw: z.coerce
-      .number({ invalid_type_error: "Enter the sanctioned load from your bill" })
+      .number({
+        invalid_type_error: "Enter the sanctioned load from your bill",
+      })
       .positive("Sanctioned load must be greater than zero")
       .max(150, "That is a commercial connection, not a domestic one"),
 
     occupancy: Occupancy,
     modifiers: z.array(UsageModifier).default([]),
+  })
+  .refine((v) => Boolean(v.building_id) || Boolean(v.traced_roof), {
+    message: "Pick an address, or tap a roof on the map to measure it",
+    path: ["building_id"],
   })
   .refine(
     (v) =>
@@ -138,7 +167,15 @@ export const RecommendationSchema = z.object({
 
   usable_area_m2: z.number(),
   /** FR-1.5 -- the result says so when the household's own figure was used. */
-  usable_area_source: z.enum(["SEGMENTED", "USER_CORRECTED"]),
+  /**
+   * USER_TRACED was missing here until 2026-09-14 and the API has always been
+   * able to return it -- `api/schemas.py` types this as a three-way Literal.
+   * Nothing caught it because no UI path reached the `traced_roof` branch, so
+   * the drift only surfaced the moment live measurement started using it: the
+   * API answered 200 with a complete recommendation and the browser threw it
+   * away at the schema boundary, reporting "could not calculate".
+   */
+  usable_area_source: z.enum(["SEGMENTED", "USER_CORRECTED", "USER_TRACED"]),
 
   tariff_version: z.string(),
   assumptions_version: z.string(),

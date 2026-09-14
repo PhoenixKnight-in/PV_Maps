@@ -69,7 +69,10 @@ export default function ResultsPage() {
   const r = recommendation;
   const curve = r.curve ?? [];
   const selected =
-    curve.find((c) => c.kwp === activeKwp) ?? r.recommended ?? curve[curve.length - 1] ?? null;
+    curve.find((c) => c.kwp === activeKwp) ??
+    r.recommended ??
+    curve[curve.length - 1] ??
+    null;
   const isRecommended = !!r.recommended && selected?.kwp === r.recommended.kwp;
 
   if (r.verdict === "NO_CAPACITY") {
@@ -101,14 +104,22 @@ export default function ResultsPage() {
   const map = building ? (
     <ErrorBoundary quiet>
       <Suspense fallback={null}>
-        <RoofMap building={building} center={address ? [address.lon, address.lat] : null} fill />
+        <RoofMap
+          building={building}
+          center={address ? [address.lon, address.lat] : null}
+          fill
+        />
       </Suspense>
     </ErrorBoundary>
   ) : null;
 
   const inlineMap = building ? (
     <ErrorBoundary quiet>
-      <Suspense fallback={<div className="h-[300px] rounded-lg border border-hairline bg-well" />}>
+      <Suspense
+        fallback={
+          <div className="h-[300px] rounded-lg border border-hairline bg-well" />
+        }
+      >
         <RoofMap
           building={building}
           center={address ? [address.lon, address.lat] : null}
@@ -151,14 +162,20 @@ export default function ResultsPage() {
             {address && (
               <div className="hud flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
                 <span className="chip-dot bg-sky" aria-hidden="true" />
-                <span className="text-body-sm font-medium text-ink">{address.display_name}</span>
+                <span className="text-body-sm font-medium text-ink">
+                  {address.display_name}
+                </span>
                 <span className="mono text-code-mono text-ink-muted">
                   {address.lat.toFixed(4)}° N, {address.lon.toFixed(4)}° E
                 </span>
               </div>
             )}
 
-            <Panel floating title="Capacity comparison audit" aside={<Chip tone="neutral">FR-5</Chip>}>
+            <Panel
+              floating
+              title="Capacity comparison audit"
+              aside={<Chip tone="neutral">FR-5</Chip>}
+            >
               <CapacityTriCard recommendation={r} />
             </Panel>
 
@@ -166,7 +183,10 @@ export default function ResultsPage() {
 
             {building && (
               <Panel floating title="Spatial deduction ledger">
-                <ObstructionLedger building={building} usableAreaM2={r.usable_area_m2} />
+                <ObstructionLedger
+                  building={building}
+                  usableAreaM2={r.usable_area_m2}
+                />
               </Panel>
             )}
 
@@ -188,7 +208,9 @@ export default function ResultsPage() {
             <Panel
               floating
               title="Bill-to-generation alignment"
-              aside={<Chip tone="neutral">{kwp(r.feasible_max_kwp)} kWp cap</Chip>}
+              aside={
+                <Chip tone="neutral">{kwp(r.feasible_max_kwp)} kWp cap</Chip>
+              }
               bodyClass="!p-0"
             >
               <dl className="cell-grid grid-cols-3 !rounded-none !border-0 !border-b">
@@ -198,7 +220,11 @@ export default function ResultsPage() {
                     {area(r.usable_area_m2)} m²
                   </dd>
                   <dd className="mono mt-0.5 text-code-mono text-ink-subtle">
-                    {r.usable_area_source === "USER_CORRECTED" ? "Your figure" : "Segmented"}
+                    {r.usable_area_source === "USER_CORRECTED"
+                      ? "Your figure"
+                      : r.usable_area_source === "USER_TRACED"
+                        ? "Measured live"
+                        : "Segmented"}
                   </dd>
                 </div>
                 <div className="cell">

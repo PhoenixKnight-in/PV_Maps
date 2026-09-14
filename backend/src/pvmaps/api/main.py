@@ -32,7 +32,7 @@ from pvmaps import __version__
 from pvmaps.api.deps import TARIFF_VERSION, get_assumptions, get_subsidy
 from pvmaps.api.logging import access_log_middleware, configure_logging
 from pvmaps.api.ratelimit import SlidingWindowLimiter
-from pvmaps.api.routers import bill_extract, buildings, search, sizing, tariffs
+from pvmaps.api.routers import bill_extract, buildings, locate, search, sizing, tariffs
 from pvmaps.api.settings import Settings, load_settings
 from pvmaps.db.session import create_engine, create_session_factory
 from pvmaps.tariff.schedule import load_schedule
@@ -150,6 +150,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(sizing.router, prefix="/v1")
     app.include_router(bill_extract.router, prefix="/v1")
     app.include_router(tariffs.router, prefix="/v1")
+    app.include_router(locate.router, prefix="/v1")
 
     @app.get("/healthz", tags=["ops"], summary="Liveness and pilot-data readiness")
     async def healthz(response: Response) -> dict[str, Any]:

@@ -1,0 +1,29 @@
+# Nothing here is COPYed by api/seed/pipeline.Dockerfile -- they take
+# pyproject.toml, uv.lock, src, alembic and nothing else. This file is about the
+# build CONTEXT, which is uploaded to the daemon in full before any COPY runs.
+#
+# A local .venv holding pvlib, pandas, scipy and friends is most of a gigabyte,
+# and paying that upload on every `docker compose up` is the difference between
+# a build that looks broken and one that looks fast.
+.venv
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.hypothesis
+.mypy_cache
+.ruff_cache
+
+# Offline-plane inputs: large, regenerable, and some of it is licensed imagery
+# that must not be redistributed (same rule as .gitignore).
+data
+*.tif
+*.tiff
+*.mbtiles
+checkpoints
+*.pt
+*.pth
+
+.env
+.env.*
+.DS_Store

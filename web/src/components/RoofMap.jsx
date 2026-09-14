@@ -60,6 +60,13 @@ const ROOF_FILL = "#d97706";
 const ROOF_LINE = "#b45309";
 const OBSTRUCTION = "#dc2626";
 
+/** Modules render dark and cool against the warm roof amber, because on
+ *  satellite imagery a panel IS the dark rectangle — matching that reads as the
+ *  real thing rather than as an annotation layer. */
+const PANEL_FILL = "#1e3a8a";
+const PANEL_LINE = "#93c5fd";
+const USABLE_LINE = "#16a34a";
+
 /** [[w, s], [e, n]] over any GeoJSON coordinate nesting, or null if empty. */
 function bounds(geojson) {
   let w = 180;
@@ -81,10 +88,25 @@ function bounds(geojson) {
   };
 
   walk(geojson?.coordinates ?? geojson?.geometry?.coordinates);
-  return seen ? [[w, s], [e, n]] : null;
+  return seen
+    ? [
+        [w, s],
+        [e, n],
+      ]
+    : null;
 }
 
-export default function RoofMap({ building, center, label, fill = false }) {
+export default function RoofMap({
+  building,
+  center,
+  label,
+  fill = false,
+  candidates = null,
+  chosenIndex = null,
+  layout = null,
+  onPickCandidate = null,
+  onPickPoint = null,
+}) {
   const ref = useRef(null);
   const map = useRef(null);
 
@@ -106,9 +128,20 @@ export default function RoofMap({ building, center, label, fill = false }) {
         // seeing if the tile host is unreachable. A failed basemap degrades to
         // the old behaviour rather than to a black hole.
         layers: [
-          { id: "bg", type: "background", paint: { "background-color": "#f1f5f9" } },
+          {
+            id: "bg",
+            type: "background",
+            paint: { "background-color": "#f1f5f9" },
+          },
           ...(BASEMAP_URL
-            ? [{ id: "satellite", type: "raster", source: "satellite", paint: { "raster-opacity": 1 } }]
+            ? [
+                {
+                  id: "satellite",
+                  type: "raster",
+                  source: "satellite",
+                  paint: { "raster-opacity": 1 },
+                },
+              ]
             : []),
         ],
       },
@@ -118,14 +151,72 @@ export default function RoofMap({ building, center, label, fill = false }) {
       zoom: 19,
       attributionControl: true,
     });
-    m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-    m.addControl(new maplibregl.ScaleControl({ maxWidth: 90, unit: "metric" }), "bottom-left");
+    // A basemap that cannot load must say so somewhere. `ErrorBoundary quiet`
+    // wraps this component, so without a listener a style failure is invisible.
+    m.on("error", (e) => console.warn("[RoofMap]", e?.error?.message ?? e));
+    m.addControl(
+      new maplibregl.NavigationControl({ showCompass: false }),
+      "top-right",
+    );
+    m.addControl(
+      new maplibregl.ScaleControl({ maxWidth: 90, unit: "metric" }),
+      "bottom-left",
+    );
     map.current = m;
     return () => {
       map.current?.remove();
       map.current = null;
     };
+    // Created once, deliberately. This effect used to depend on [lon, lat],
+    // which destroyed and rebuilt the whole map -- and every layer on it --
+    // each time an address resolved. That was survivable when the map only
+    // appeared after a parcel was chosen; now that it is always on screen and
+    // the user flies between addresses, it would blank the canvas on every
+    // search. Recentring belongs in the flyTo effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // MapLibre measures its container once, at construction, and never again on
+  // its own. That was invisible while the canvas was `absolute inset-0` and
+  // therefore had its final size immediately; as a sticky grid column it is laid
+  // out AFTER mount, so the map kept the size it saw first — zero — and rendered
+  // a blank grey box with working controls sitting on top of it.
+  useEffect(() => {
+    const m = map.current;
+    const el = ref.current;
+    if (!m || !el || typeof ResizeObserver === "undefined") return;
+
+    // NEVER resize before the style has loaded. Calling resize() mid-load leaves
+    // the map with no source caches and `isStyleLoaded()` stuck false: no tiles
+    // are ever requested, flyTo silently does nothing, and what is on screen is
+    // a grey box with working zoom buttons sitting on top of it. Observed
+    // 2026-09-14 — getStyle() returned undefined on the affected instance.
+    const safeResize = () => {
+      try {
+        m.resize();
+      } catch {
+        // Resizing a torn-down map is not worth surfacing.
+      }
+    };
+
+    const ro = new ResizeObserver(() => {
+      if (m.isStyleLoaded()) safeResize();
+    });
+    ro.observe(el);
+
+    if (m.isStyleLoaded()) safeResize();
+    else m.once("load", safeResize);
+
+    return () => ro.disconnect();
+  }, []);
+
+  // Recentre without remounting.
+  useEffect(() => {
+    const m = map.current;
+    if (!m || lon == null || lat == null) return;
+    // `essential` so the flight still runs under prefers-reduced-motion: the
+    // camera move IS the feedback that the address resolved.
+    m.flyTo({ center: [lon, lat], zoom: 19, duration: 900, essential: true });
   }, [lon, lat]);
 
   useEffect(() => {
@@ -161,7 +252,10 @@ export default function RoofMap({ building, center, label, fill = false }) {
       if (b) m.fitBounds(b, { padding: 56, maxZoom: 20, duration: 0 });
 
       if (building.obstruction_geojson) {
-        m.addSource("obstructions", { type: "geojson", data: building.obstruction_geojson });
+        m.addSource("obstructions", {
+          type: "geojson",
+          data: building.obstruction_geojson,
+        });
         m.addLayer({
           id: "obstruction-fill",
           type: "fill",
@@ -174,6 +268,170 @@ export default function RoofMap({ building, center, label, fill = false }) {
     if (m.isStyleLoaded()) draw();
     else m.once("load", draw);
   }, [building]);
+
+  // Live SAM2 candidates. The chosen one is drawn solid; the alternatives sit
+  // underneath as dashed outlines the user can tap.
+  //
+  // FR-1.5 requires the assumption to be correctable, and here that is literal:
+  // SAM2 returns the same point at several nested scales and its own confidence
+  // cannot tell a rooftop from the courtyard kiosk on it. Showing only the pick
+  // would hide the one control that makes a wrong pick recoverable.
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+
+    const draw = () => {
+      for (const id of ["cand-line", "cand-fill", "cand-alt-line"]) {
+        if (m.getLayer(id)) m.removeLayer(id);
+      }
+      if (m.getSource("candidates")) m.removeSource("candidates");
+      if (!candidates?.length) return;
+
+      m.addSource("candidates", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: candidates.map((c, i) => ({
+            type: "Feature",
+            geometry: c.geometry,
+            properties: {
+              i,
+              chosen: i === chosenIndex ? 1 : 0,
+              area: c.area_m2,
+            },
+          })),
+        },
+      });
+
+      m.addLayer({
+        id: "cand-alt-line",
+        type: "line",
+        source: "candidates",
+        filter: ["==", ["get", "chosen"], 0],
+        paint: {
+          "line-color": ROOF_LINE,
+          "line-width": 1.25,
+          "line-opacity": 0.55,
+          "line-dasharray": [2, 2],
+        },
+      });
+      m.addLayer({
+        id: "cand-fill",
+        type: "fill",
+        source: "candidates",
+        filter: ["==", ["get", "chosen"], 1],
+        paint: { "fill-color": ROOF_FILL, "fill-opacity": 0.3 },
+      });
+      m.addLayer({
+        id: "cand-line",
+        type: "line",
+        source: "candidates",
+        filter: ["==", ["get", "chosen"], 1],
+        paint: { "line-color": ROOF_LINE, "line-width": 2 },
+      });
+
+      const chosen = chosenIndex != null ? candidates[chosenIndex] : null;
+      const b = chosen && bounds(chosen.geometry);
+      if (b) m.fitBounds(b, { padding: 64, maxZoom: 20, duration: 600 });
+    };
+
+    if (m.isStyleLoaded()) draw();
+    else m.once("load", draw);
+  }, [candidates, chosenIndex]);
+
+  // The usable plane and the modules that fit on it.
+  //
+  // This is the answer to "show me where the panels actually go". The candidate
+  // outline is the FOOTPRINT; the green line inside it is what survives the
+  // parapet setback, and the dark rectangles are real module footprints packed
+  // into that, at the tilt and row pitch the yield model assumed.
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+
+    const draw = () => {
+      for (const id of ["panel-fill", "panel-line", "usable-line"]) {
+        if (m.getLayer(id)) m.removeLayer(id);
+      }
+      for (const id of ["panels", "usable"]) {
+        if (m.getSource(id)) m.removeSource(id);
+      }
+      if (!layout) return;
+
+      if (layout.usable_geometry) {
+        m.addSource("usable", {
+          type: "geojson",
+          data: layout.usable_geometry,
+        });
+        m.addLayer({
+          id: "usable-line",
+          type: "line",
+          source: "usable",
+          paint: {
+            "line-color": USABLE_LINE,
+            "line-width": 1.5,
+            "line-dasharray": [3, 2],
+          },
+        });
+      }
+
+      if (layout.panels?.features?.length) {
+        m.addSource("panels", { type: "geojson", data: layout.panels });
+        m.addLayer({
+          id: "panel-fill",
+          type: "fill",
+          source: "panels",
+          paint: { "fill-color": PANEL_FILL, "fill-opacity": 0.75 },
+        });
+        // Hairline edges, so a dense array still reads as separate modules
+        // rather than one dark blob at the zoom a roof is confirmed at.
+        m.addLayer({
+          id: "panel-line",
+          type: "line",
+          source: "panels",
+          paint: { "line-color": PANEL_LINE, "line-width": 0.5 },
+        });
+      }
+    };
+
+    if (m.isStyleLoaded()) draw();
+    else m.once("load", draw);
+  }, [layout]);
+
+  // ONE click handler, because the map has two meanings for a click and they
+  // must not both fire. MapLibre delivers every listener the same event and has
+  // no preventDefault, so tapping an outline would otherwise also re-measure
+  // the point under it -- throwing away the choice the user just made and
+  // spending a GPU round trip to do it.
+  //
+  // Outlines win: aiming at a drawn shape is a more specific intention than
+  // aiming at the ground.
+  useEffect(() => {
+    const m = map.current;
+    if (!m || (!onPickCandidate && !onPickPoint)) return;
+
+    const handler = (e) => {
+      const layers = ["cand-alt-line", "cand-fill", "cand-line"].filter((l) =>
+        m.getLayer(l),
+      );
+      const hit = layers.length
+        ? m.queryRenderedFeatures(e.point, { layers })
+        : [];
+      if (hit.length && onPickCandidate) {
+        onPickCandidate(hit[0].properties.i);
+        return;
+      }
+      onPickPoint?.(e.lngLat.lat, e.lngLat.lng);
+    };
+
+    m.on("click", handler);
+    if (onPickPoint) m.getCanvas().style.cursor = "crosshair";
+    return () => {
+      m.off("click", handler);
+      const c = m.getCanvas?.();
+      if (c) c.style.cursor = "";
+    };
+  }, [onPickCandidate, onPickPoint, candidates]);
 
   if (fill) {
     // Workstation backdrop: the canvas the floating columns sit over.
@@ -191,7 +449,10 @@ export default function RoofMap({ building, center, label, fill = false }) {
           <span className="chip-dot bg-sky" aria-hidden="true" />
           {/* One line, truncated. Pilot display names run long, and a wrapping
               pill grows into the zoom stack on a phone. */}
-          <span className="truncate font-mono text-code-mono font-medium text-ink" title={label}>
+          <span
+            className="truncate font-mono text-code-mono font-medium text-ink"
+            title={label}
+          >
             {label}
           </span>
         </div>
@@ -203,12 +464,18 @@ export default function RoofMap({ building, center, label, fill = false }) {
         <div className="hud pointer-events-none absolute bottom-9 right-3 px-2 py-1">
           <p className="flex items-center gap-3 text-code-mono text-ink-sub">
             <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-sm bg-solar" aria-hidden="true" />
+              <span
+                className="h-2 w-2 rounded-sm bg-solar"
+                aria-hidden="true"
+              />
               Roof plane
             </span>
             {building.obstruction_geojson && (
               <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-sm bg-critical" aria-hidden="true" />
+                <span
+                  className="h-2 w-2 rounded-sm bg-critical"
+                  aria-hidden="true"
+                />
                 Obstruction
               </span>
             )}

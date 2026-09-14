@@ -48,7 +48,9 @@ export default function AssumptionsPanel({ recommendation: r }) {
           : "Generation comes from a pvlib analysis of this roof."}{" "}
         {r.usable_area_source === "USER_CORRECTED"
           ? "Using your usable-area figure instead of ours."
-          : "Usable area came from roof segmentation."}
+          : r.usable_area_source === "USER_TRACED"
+            ? "Roof outline measured live from satellite imagery at this point. It is a footprint: obstructions and the parapet setback have NOT been deducted, so it is less conservative than a hand-checked pilot roof."
+            : "Usable area came from roof segmentation."}
       </p>
     </Panel>
   );

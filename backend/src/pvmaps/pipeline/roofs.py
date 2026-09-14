@@ -34,7 +34,10 @@ if TYPE_CHECKING:  # pragma: no cover
 __all__ = [
     "RoofGeometry",
     "area_m2",
+    "build_image_predictor",
+    "build_mask_generator",
     "mask_to_polygons",
+    "masks_at_point",
     "to_utm",
     "usable_roof",
 ]
@@ -254,17 +257,62 @@ def mask_to_polygons(
     return sorted((p for p in polygons if p.area >= floor), key=lambda p: -p.area)
 
 
-def propose_masks(image: np.ndarray, checkpoint: str, model_cfg: str) -> list[np.ndarray]:
-    """FR-1.1 — SAM2 mask proposals. The only GPU-bound function in this module.
+def _build_sam2(checkpoint: str, model_cfg: str) -> Any:
+    import torch
+    from sam2.build_sam import build_sam2
 
-    Imported lazily and kept to a handful of lines so that everything around it
-    stays runnable and testable on a laptop. `docker/pipeline.Dockerfile` installs
-    SAM2 from git; no other image has it, and ARCHITECTURE.md 1 is explicit that
-    nothing reachable from an HTTP handler may depend on it.
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    return build_sam2(model_cfg, checkpoint, device=device, apply_postprocessing=False)
 
-    A roof/not-roof classifier still has to rank these proposals (FR-1.1). Until
-    it exists, the pilot roofs are hand-corrected, which PRD 9 calls for anyway:
-    "Precompute all roof data. Do not run segmentation live on stage."
+
+def build_image_predictor(checkpoint: str, model_cfg: str) -> Any:
+    """SAM2 in *prompted* mode. The right tool when the roof location is known.
+
+    `build_mask_generator` segments everything and hopes the roof is in there.
+    Over a dense Indian streetscape it is not: on the demo-1 tile the automatic
+    generator returned 27 masks for a scene holding hundreds of roofs, keeping
+    the high-contrast ones and skipping the rest, and none of them covered the
+    roof we were actually asking about.
+
+    But we are never guessing where the roof is -- `addresses.geom` has been
+    surveyed, and it is the whole reason the pilot exists. Handing SAM2 that
+    point turns "find every object here" into "outline the thing at this
+    coordinate", which is the question FR-1.1 actually asks.
+    """
+    from sam2.sam2_image_predictor import SAM2ImagePredictor
+
+    return SAM2ImagePredictor(_build_sam2(checkpoint, model_cfg))
+
+
+def masks_at_point(
+    predictor: Any, image: np.ndarray, px: float, py: float
+) -> list[tuple[np.ndarray, float]]:
+    """Masks for whatever sits at one pixel, best predicted IoU first.
+
+    `multimask_output=True` because a point on a rooftop is genuinely ambiguous
+    at three scales -- the roof plane, the whole building, the terrace block --
+    and SAM2 says so by returning all three with scores. Choosing between them is
+    the caller's job and is a question about roofs, not about segmentation.
+    """
+    import numpy as np
+
+    predictor.set_image(image)
+    masks, scores, _ = predictor.predict(
+        point_coords=np.array([[px, py]], dtype=np.float32),
+        point_labels=np.array([1], dtype=np.int32),
+        multimask_output=True,
+    )
+    order = np.argsort(-np.asarray(scores))
+    return [(np.asarray(masks[i]).astype("uint8"), float(scores[i])) for i in order]
+
+
+def build_mask_generator(checkpoint: str, model_cfg: str) -> Any:
+    """Load SAM2 onto the GPU once. The expensive half of `propose_masks`.
+
+    Separate because loading the model costs seconds and segmenting a roof costs
+    a fraction of one: a caller working through a ward wants one load and N
+    generate calls, not N of each. `pipeline segment` builds this once and reuses
+    it across every roof in the run.
     """
     import torch
     from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
@@ -272,5 +320,30 @@ def propose_masks(image: np.ndarray, checkpoint: str, model_cfg: str) -> list[np
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = build_sam2(model_cfg, checkpoint, device=device, apply_postprocessing=False)
-    generator = SAM2AutomaticMaskGenerator(model)
-    return [record["segmentation"] for record in generator.generate(image)]
+    return SAM2AutomaticMaskGenerator(model)
+
+
+def propose_masks(
+    image: np.ndarray,
+    checkpoint: str,
+    model_cfg: str,
+    *,
+    generator: Any | None = None,
+) -> list[np.ndarray]:
+    """FR-1.1 — SAM2 mask proposals. The only GPU-bound function in this module.
+
+    Imported lazily and kept to a handful of lines so that everything around it
+    stays runnable and testable on a laptop. `docker/pipeline.Dockerfile` installs
+    SAM2 from git; no other image has it, and ARCHITECTURE.md 1 is explicit that
+    nothing reachable from an HTTP handler may depend on it.
+
+    Pass `generator` from `build_mask_generator` to reuse a loaded model; omit it
+    and one is built for this call alone, which is the convenient shape for a
+    single roof and the wrong one for a ward.
+
+    A roof/not-roof classifier still has to rank these proposals (FR-1.1). Until
+    it exists, the pilot roofs are hand-corrected, which PRD 9 calls for anyway:
+    "Precompute all roof data. Do not run segmentation live on stage."
+    """
+    gen = generator if generator is not None else build_mask_generator(checkpoint, model_cfg)
+    return [record["segmentation"] for record in gen.generate(image)]

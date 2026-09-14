@@ -69,6 +69,8 @@ services:
       # ARCHITECTURE.md 9.2: only the deployed web origin may call the API.
       CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-http://localhost:8080,http://localhost:5173}
       PVMAPS_LOG_LEVEL: ${PVMAPS_LOG_LEVEL:-info}
+      SEGMENTER_URL: ${SEGMENTER_URL:-http://segmenter:8100}
+      NOMINATIM_CONTACT: ${NOMINATIM_CONTACT:-pvmaps-pilot}
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
@@ -100,6 +102,47 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------
+  # Live roof segmentation. GPU, and ON during a demo -- which is the exact
+  # reversal of ARCHITECTURE.md 9.1 that live measurement required.
+  #
+  # Same image as `pipeline` (SAM2 and torch are already in it); only the
+  # entrypoint differs. It is NOT behind the pipeline profile, because the
+  # product now needs it up.
+  #
+  # No `depends_on` from `api`: a missing segmenter must degrade to "roof
+  # measurement unavailable" on one route, not stop the tariff engine, the
+  # optimiser and the five seeded roofs from serving.
+  # ---------------------------------------------------------------------
+  segmenter:
+    build:
+      context: ./backend
+      dockerfile: ../docker/pipeline.Dockerfile
+    entrypoint: ["uvicorn", "pvmaps.segmenter.service:app", "--host", "0.0.0.0", "--port", "8100"]
+    environment:
+      SAM2_CHECKPOINT: /checkpoints/sam2.1_hiera_small.pt
+      TILE_CACHE_DIR: /data/imagery
+    ports:
+      - "${SEGMENTER_PORT:-8100}:8100"
+    volumes:
+      - ./checkpoints:/checkpoints
+      - ./data:/data
+    healthcheck:
+      # start_period covers the ~20 s of loading SAM2 onto the GPU.
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8100/healthz')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # ---------------------------------------------------------------------
   # Offline preparation. Never runs during a demo. Start explicitly:
   #   docker compose --profile pipeline run --rm pipeline <command>
   # ---------------------------------------------------------------------
@@ -112,6 +155,10 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-pvmaps}:${POSTGRES_PASSWORD:-pvmaps}@postgis:5432/${POSTGRES_DB:-pvmaps}
     volumes:
       - ./data:/data          # imagery tiles, surveyed pins, hand-corrections
+      # SAM2 weights. Outside the image on purpose: hundreds of megabytes that
+      # would otherwise be baked into every rebuild, and `.gitignore` excludes
+      # them. `pipeline fetch-checkpoint` fills this the first time.
+      - ./checkpoints:/checkpoints
     depends_on:
       postgis:
         condition: service_healthy
