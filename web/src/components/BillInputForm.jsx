@@ -284,16 +284,26 @@ export default function BillInputForm({
         {locationResolution && (
           <div
             className={`rounded border p-2.5 space-y-2 ${
-              locationResolution.level === 1 || locationResolution.level === 2
-                ? "border-emerald-500/40 bg-emerald-50/40 dark:bg-emerald-950/20"
-                : locationResolution.requires_user_confirmation
+              /* Needing confirmation outranks the level. A Level 1 record that
+                 resolved only to a STREET was being painted confident green
+                 while its own prompt underneath asked the household to move
+                 the pin -- the colour said "settled", the text said "check". */
+              locationResolution.requires_user_confirmation
                 ? "border-amber-500/40 bg-amber-50/40 dark:bg-amber-950/20"
+                : locationResolution.level === 1 || locationResolution.level === 2
+                ? "border-emerald-500/40 bg-emerald-50/40 dark:bg-emerald-950/20"
                 : "border-sky-500/40 bg-sky-50/40 dark:bg-sky-950/20"
             }`}
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold">
-                {locationResolution.level === 1 && "⚡ Level 1: TNPDCL GIS Lookup"}
+                {/* Name the source that actually answered. The pilot fixture is
+                    a geocoded street, and calling it a TNPDCL GIS lookup lent it
+                    an authority it does not have. */}
+                {locationResolution.level === 1 &&
+                  (locationResolution.source === "TNPDCL_GIS"
+                    ? "⚡ Level 1: TNPDCL GIS Lookup"
+                    : "📍 Level 1: Seeded connection (street level)")}
                 {locationResolution.level === 2 && "⚡ Level 2: Meter Repository"}
                 {locationResolution.level === 3 && "📍 Level 3: Address Geocoding"}
                 {locationResolution.level === 4 && "🛰️ Level 4: User-Confirmed"}

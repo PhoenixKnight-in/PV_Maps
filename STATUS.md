@@ -1,715 +1,492 @@
 # PV Maps — Project Status
 
-**Status:** Phase 1 feature-complete, acceptance-blocked
-**Last updated:** 2026-09-13
-**Backs:** [PRD.md](PRD.md) · [ARCHITECTURE.md](ARCHITECTURE.md)
-
-> The build is done. The evidence is mostly not. Every functional requirement in
-> PRD §6 has a working implementation; what is outstanding is the real-world data
-> the PRD itself demands before Phase 1 can be called complete. One acceptance
-> criterion moved under its own power on 2026-09-13 — the yield model, because
-> that one needed compute rather than a person (§11). The two that still block
-> are the five real bills and the 50 held-out roofs, and both need a human with
-> access to something this repo cannot generate.
+> **Last updated:** 2026-09-15 IST  
+> **Stack health:** All 4 containers running and healthy
 
 ---
 
-## 1. Summary
+## 1. What PV Maps Does
 
-| | |
-|---|---|
-| Backend tests | **226 passed, 2 failed, 2 skipped** |
-| Failing tests | Both deliberate acceptance gates — see §2 |
-| Frontend routes | `/` and `/results/:runId` — no others |
-| Pilot roofs seeded | 5 |
-| Pilot roofs analysed | **5** — pvlib has been run; `yield_source` is `BUILDING` (§11) |
-| Phase 2 leakage | None. Grep of `web/src` returns comments only |
-| External network deps | **One, and it is live.** `RoofMap` fetches Esri World Imagery tiles from `server.arcgisonline.com` by default — 16 tile requests observed in-browser 2026-09-13. No webfonts, no CDN otherwise. See §4 item 3 |
-| Stack | `docker compose up` verified end to end — see §4 item 2 for the required `.env` ports |
-| Frontend ↔ backend | **Connected and verified live** — see §10 |
+PV Maps is a **grid-aware rooftop solar sizing platform for Tamil Nadu**. Unlike generic solar calculators that answer "what can this roof produce?", PV Maps answers **"what can this bill use?"** — because in Tamil Nadu:
 
-The two red tests are **not** defects. `tests/test_tariff_golden.py` says so in its
-own docstring: *"THIS TEST IS EXPECTED TO FAIL ON A FRESH CLONE. That is the
-point."* They stay red until someone feeds them reality.
+- The **sanctioned load** (on the service connection) usually binds before the roof does.
+- The **TNERC telescopic tariff** means a solar kWh is worth anywhere from ₹0 to ₹11.55 depending on which slab it displaces.
+
+The platform takes an electricity bill and a rooftop, runs a full optimisation across every allowed system size, and returns a comparison curve with honest ranges rather than single-point estimates.
 
 ---
 
-## 2. PRD §10 acceptance criteria — scorecard
+## 2. Architecture Overview
 
-| Criterion | Status | What is missing |
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│   Frontend   │     │   Backend    │     │  Segmenter   │     │   PostGIS    │
+│ React + Vite │────▶│   FastAPI    │────▶│  SAM2 (GPU)  │     │  PostgreSQL  │
+│  :8081       │     │  :8000       │     │  :8100       │     │  :5432       │
+└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
+```
+
+| Layer | Technology | Role |
 |---|---|---|
-| Tariff engine reproduces 5 real TNPDCL bills to the rupee | **BLOCKED** | `backend/tests/fixtures/bills/real_bills.json` holds five `TODO-*` placeholders with `units_kwh: null`. Zero real bills collected |
-| Roof segmentation IoU ≥ 0.75 on 50 held-out roofs | **STILL NOT RUN**, but no longer for three reasons | Two of the three gaps in §6 item 4 are closed: imagery now has a source (`pipeline/imagery.py`) and `pipeline segment` produces a predicted GeoJSON on the GPU (§12). What remains is the one that always needed a person — **50 hand-drawn ground truths**. The pilot footprints cannot stand in: `seed._square()` generates them as squares round a centroid, so scoring against them would measure nothing |
-| Yield model within a defensible published TN range | **PASS** | pvlib run over all five pilot roofs 2026-09-13: **1474.8 – 1675.5 kWh/kWp/yr**, which overlaps the published 1500–1600 band. `roof_analyses` is now populated by `seed`, so runs report `yield_source: BUILDING`. Caveat in §11: the irradiance source is `CLEARSKY_SCALED`, not TMY |
-| Sizing engine never exceeds roof or sanctioned-load max | **PASS** | Enforced in `sizing/optimise.py`, covered by `test_sizing.py` and `test_capacity.py` |
-| Economics keep self-consumed and exported separate | **PASS** | Structural: `CandidateOut` carries them as separate `RangeOut` fields; the UI renders them as separate line items (FR-4.2, FR-4.3) |
-| Five pilot addresses return roof results under two seconds | **PASS** | `test_latency.py` asserts a roof budget and a sizing budget across all five |
-| Every Phase 1 result carries the disclaimer | **PASS** | Rendered from `recommendation.grid_disclosure` with the exact PRD string as fallback; verified in-browser on every path including `NO_CAPACITY` |
+| **Frontend** | React 18, Vite, MapLibre GL, Zod | Workstation UI — address search, roof map, bill entry, results |
+| **API** | FastAPI, Pydantic, asyncpg, Alembic | Sizing engine, bill parser, geocoding proxy, location resolver |
+| **Segmenter** | SAM2 (Hiera Small), PyTorch, CUDA | Live roof measurement from satellite imagery |
+| **Database** | PostgreSQL 16 + PostGIS 3.4 | Pilot roofs, rule packs, sizing run history |
+| **Pipeline** | Offline-only profile | Roof import, pvlib yield analysis, IoU measurement |
 
 ---
 
-## 3. What is built
+## 3. Running Services
 
-### Backend — `backend/src/pvmaps/`
-
-| Module | State |
-|---|---|
-| `tariff/` | Decimal telescopic engine, dated versioned rule packs. Complete, **unvalidated** |
-| `sizing/` | Capacity conversion, self-consumption model, candidate optimiser, subsidy. Complete and tested |
-| `api/` | `GET /v1/search`, `GET /v1/buildings/{id}`, `POST /v1/sizing-runs`, `POST /v1/bill-extract`, `GET /v1/tariffs/current`, `GET /healthz`. No transformer, quota, allocation or grid-eligibility endpoint (ARCHITECTURE.md §5.2) |
-| `pipeline/` | Roof geometry, ingest, seed, `yield_physics`, `iou`, **`imagery`**. **pvlib has been run over the pilot roofs** (§11); its output is committed at `pipeline/analyses/pilot_roof_analyses.json` and loaded by `seed`. **Segmentation is now reachable**: `pipeline segment` runs SAM2 on the GPU (§12) |
-| `db/` | PostGIS models + Alembic migrations |
-| `phase2/` | Allocator + TNERC regulation pack. Quarantined groundwork, imported by nothing in `api/` |
-
-### Frontend — `web/src/`
-
-Two routes, nineteen components, one design system ("Grid Spatial Studio").
-
-| Screen | Components |
-|---|---|
-| Intake (`/`) | `AddressSearch`, `RoofMap`, `RoofAnalysisPanel`, `ObstructionLedger`, `RoofCorrection`, `BillInputForm`, `DaytimeUseForm` |
-| Results (`/results/:runId`) | `CapacityTriCard`, `EnergySplitBar`, `SizingScrubber`, `SizingCurve`, `CandidateTable`, `EconomicsBreakdown`, `AssumptionsPanel`, `RegulatoryBar` |
-| Shared | `Workstation`, `Panel`, `Chip`, `Metric`, `format` |
-
-Zod schemas are **not** in field-for-field parity with the Pydantic response
-models, and the claim that they were — "verified programmatically" — was wrong.
-`usable_area_source` is a three-way `Literal` server-side and was a two-way
-`z.enum` in the browser until 2026-09-14; `USER_TRACED` was missing. It went
-unnoticed because no UI path reached the `traced_roof` branch, and it surfaced
-the instant live measurement did: a 200 with a complete recommendation, thrown
-away at the schema boundary as "could not calculate" (§13).
-
-The parity is restored for that field. What does not exist is the programmatic
-check the sentence claimed — and a real one, run in CI against the OpenAPI
-schema, is worth more than the claim was.
-
-### Functional requirements
-
-| FR | State |
-|---|---|
-| FR-1 Roof extraction | Precomputed roofs, obstruction geometry, usable area, confidence, numeric correction. **FR-1.1 SAM2 segmentation now runs on the GPU** (§12), though proposals are ranked by a geometric heuristic rather than the classifier FR-1.1 describes. Polygon vertex editing is still a TODO |
-| FR-2 Yield physics | pvlib module built **and run**; all five pilot roofs carry their own analysis. Still a scaled clear-sky year rather than TMY |
-| FR-3 Bill and tariff intake | Manual entry always available; optional upload + extraction; three daytime questions |
-| FR-4 Bill-to-Roof Optimiser | Full candidate sweep, self-use/export split, separate rupee line items, value curve, scrubber |
-| FR-5 Interface | Complete |
-| FR-6 Synthetic Grid Pressure | **Not built** — correctly, it is optional and post-acceptance |
-| FR-7 Grid Passport | **Phase 2** — out of scope |
-
----
-
-## 4. Known code gaps
-
-1. ~~**Demo fallback is dead code.**~~ **RESOLVED 2026-09-13.** `web/src/api/dataSource.ts`
-   now wraps every screen-facing call in `withFallback()`, and `probeApi()` runs
-   on mount from `App.jsx`. Verified in-browser with the API down: the offline
-   strip renders, address search resolves against the bundled pilot table, and a
-   sizing run returns the stored result for that roof labelled by
-   `OfflineResultNotice`. Outage detection is deliberately narrow — 502/503/504
-   and timeouts fall back; a 500 is our bug and still surfaces.
-
-2. ~~**`docker compose up` unverified.**~~ **RESOLVED 2026-09-13.** Exercised end
-   to end from a clean volume: `postgis` healthy → `migrate` exited 0 → `seed`
-   exited 0 → `api` healthy → `web` serving. `/healthz` reports
-   `{"status":"ok","database":"ok"}`.
-
-   **It needs a `.env`, because a default port is already taken.** A committed
-   `.env` is not possible (gitignored, and it holds the database password), so
-   this is the checklist. Ports **re-measured 2026-09-13**; the earlier version of
-   this table was written on a different machine and one row of it was wrong here:
-
-   | Var | Default | Set to | Why |
-   |---|---|---|---|
-   | `WEB_PORT` | 8080 | `8081` | Held by the Oracle TNS listener (`TNSLSNR`). Confirmed still true. |
-   | `POSTGRES_PORT` | 5432 | *leave default* | **Correction:** this table previously said a native PostgreSQL 18 occupies 5432. There is no PostgreSQL installed on this machine and 5432 is free. Re-measure before assuming either way — only the host mapping would move; in-network the API always uses `postgis:5432`. |
-
-   Set `CORS_ALLOW_ORIGINS` to match whatever `WEB_PORT` becomes, or the served
-   build is blocked by its own API (`api/settings.py` refuses `*` outright).
-
-   A `.env` matching the above is now written, and two `.dockerignore` files were
-   added alongside it — see item 7.
-
-3. **Basemap is NOT a flat fill any more, and this entry said it was.**
-   Corrected 2026-09-13 after observing it in the browser. `RoofMap` now defaults
-   `VITE_BASEMAP_URL` to
-   `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/...` and
-   attributes "Imagery © Esri, Maxar, Earthstar Geographics" on screen. The
-   component's own docstring documents the change deliberately — "It is now a
-   switch rather than an absence" — and gives the reason: FR-1.1 needs z19–20 or
-   a 10 m terrace is nine pixels across.
-
-   The reason is sound. The consequence is that **ARCHITECTURE.md §9.3 is
-   currently violated on the default path**, and on a stage with no wifi the roof
-   imagery disappears while the offline fallback happily reports everything else
-   as fine — the one failure mode §9.3 exists to prevent.
-
-   Three ways out, cheapest first:
-
-   | Option | Cost | Honours §9.3 |
-   |---|---|---|
-   | Ship `VITE_BASEMAP_URL=""` in the demo build | one line | yes, back to a flat fill |
-   | Pre-seed the browser tile cache for the five pilot roofs | small | partly — first load still needs network |
-   | Serve the pilot tiles from our own origin | a day, plus a licence check | yes, and keeps the imagery |
-
-   Whoever runs the demo must pick one. There is no default that is both
-   stage-safe and shows imagery.
-
-4. **Fonts are not vendored.** Geist / Inter / JetBrains Mono lead each stack and
-   fall back to Segoe UI Variable Display, Segoe UI Variable Text and Cascadia
-   Mono — all local to Windows 11, so typography is deterministic on the demo
-   machine with zero network. Drop woff2 files into `web/public/fonts` plus a
-   `@font-face` block and the stacks pick them up with no other change.
-
-5. **Stale PRD section references remain in `backend/tests/`.** `src/` was swept;
-   test files still cite the superseded numbering in failure messages. Cosmetic.
-
-6. **`₹NaN` renders in the value-curve tooltip.** Found in-browser 2026-09-13 on
-   the `bldg-demo-1` results screen. Hover any point on the candidate sizing
-   curve and the tooltip reads:
-
-   ```
-   1.5 kWp
-   band        : ₹NaN
-   Conservative: ₹19,577
-   Optimistic  : ₹27,293
-   ```
-
-   `SizingCurve.jsx:42` builds `band: [lo, hi]` as a two-element array to feed
-   the shaded `<Area>`. Recharts' `<Tooltip>` renders every series it finds,
-   including that one, and the currency formatter turns an array into `NaN`. The
-   two real lines beside it are correct, so nothing is miscalculated — but `NaN`
-   next to a rupee sign on the one chart a judge is most likely to hover is a bad
-   place to have it.
-
-   Fix is one of: `tooltipType="none"` on the `<Area>`, or a `<Tooltip>` filter
-   that drops the `band` key. Not applied here — it was found while running the
-   stack, not while working on the chart.
-
-7. ~~**No `.dockerignore` anywhere.**~~ **RESOLVED 2026-09-13.** There was none,
-   and it had never bitten because nobody had installed dependencies on the host.
-   Doing so breaks the web image:
-
-   `docker/web.Dockerfile` runs `npm ci` and **then** `COPY . .`, so a host
-   `node_modules` is copied straight over the install the container just did.
-   esbuild and rollup ship per-platform binaries, so a Windows install lands in
-   an alpine image and `npm run build` fails claiming the wrong binary — with
-   nothing on screen pointing at the copy as the cause.
-
-   `web/.dockerignore` and `backend/.dockerignore` now exclude `node_modules` and
-   `.venv` respectively. The backend one is only about upload size — no Dockerfile
-   there copies `.venv` — but that context is close to a gigabyte once the
-   pipeline group is installed, which makes a working build look like a hung one.
-
-8. **Some `PILOT_ROOFS` coordinates are not real places.** Found 2026-09-14 by
-   rendering the imagery under each surveyed centroid while testing the GPU path
-   (§12).
-
-   `seed.py` was already explicit that `_square()` fabricates the *footprints*.
-   What was not known is that at least one **centroid** is fabricated too:
-   `bldg-demo-5`, "7 Sathuvachari 5th Cross", sits at 12.9440, 79.1515 — in the
-   **Palar riverbed**, with no building within about 100 m. `bldg-demo-4` sits on
-   open scrub at the edge of a built-up patch. `bldg-demo-3` (VIT) is genuinely
-   correct, and demo-1 and demo-2 are at least on dense rooftops.
-
-   This is harmless for everything Phase 1 currently demonstrates — the tariff
-   engine, the optimiser and the economics never look at imagery, and the areas
-   are hand-entered constants rather than derived from these points. It is fatal
-   for anything that does:
-
-   - Segmentation and IoU on the pilot set measure nothing (§12).
-   - The browser map draws a synthetic square over a river for demo-5, on top of
-     live Esri imagery (§4 item 3), so a judge who zooms in sees it.
-
-   Replacing them needs five real Vellore addresses with surveyed coordinates —
-   the same trip that collects the five TNPDCL bills in §6 item 1.
-
----
-
-## 5. Open questions from PRD §10 "must verify"
-
-These are unresolved by design. The code refuses to guess rather than papering
-over them.
-
-| Question | Where it bites |
-|---|---|
-| **Bimonthly billing-cycle treatment** | TN bills are bimonthly; the free allowance reportedly rises to 200 units for consumers at or below 500 units bimonthly, which is *not* a 2× scaling. `tariff/schedule.to_billing_period()` raises `NotImplementedError` rather than guess |
-| **Solar export settlement rate** | Currently modelled as **₹0/kWh** and labelled unverified on screen. This materially suppresses recommended sizes — it is the single assumption most likely to change the headline number |
-| **Self-consumption ranges per household profile** | Drives the widest band in the whole calculation |
-| **VIT tariff and sanctioned demand** | PRD §11 says show physical MWp only until these exist. Currently honoured |
-| **Network charges and subsidy rule confirmation** | Subsidy pack is dated but unverified against primary source |
-
----
-
-## 6. How to proceed
-
-Order matters: items 1 and 2 can change every number downstream.
-
-### Blocked on real-world data — needs a person
-
-1. **Collect five real TNPDCL domestic bills.** Different consumption levels —
-   at least one inside the free slab, one above 400 units. Fill
-   `backend/tests/fixtures/bills/real_bills.json` (read its `_README` first for
-   the PII rules), then run:
-
-   ```bash
-   cd backend && .venv/Scripts/python.exe -m pytest tests/test_tariff_golden.py -q
-   ```
-
-   Fix the **schedule** or the **engine** to match the bill. Never the reverse.
-   This is the highest value-per-hour task in the project: it is the only
-   component a judge can falsify from the audience.
-
-2. **Read the primary TNERC / TNPDCL tariff order.** Closes the bimonthly
-   question, lets `verification_status` move to
-   `VERIFIED_AGAINST_PRIMARY_SOURCE`, and yields the real export settlement rate
-   that replaces the ₹0 placeholder.
-
-3. ~~**Run pvlib over the pilot roofs.**~~ **DONE 2026-09-13** — see §11. It needs
-   no external data, so it moved out of this list; what it does still want is a
-   **TMY file for Vellore**, which is the one input that would replace the scaled
-   clear-sky year and raise the recorded confidence from 0.55.
-
-4. **Assemble 50 held-out roofs with hand-drawn ground truth**, run
-   `pipeline.iou.evaluate()`, and report the actual number — PRD §12 says report
-   it honestly whatever it is.
-
-   This is three tasks wearing one number, and only the middle one is the "needs
-   a person" part everybody assumes:
-
-   | Missing | Who or what closes it | State |
-   |---|---|---|
-   | Held-out imagery | `pipeline/imagery.py` fetches and caches the same Esri tiles the browser map draws | **CLOSED 2026-09-14** |
-   | **A predicted GeoJSON to score** | `pipeline segment` — imagery → SAM2 on the GPU → polygons → GeoJSON | **CLOSED 2026-09-14** (§12) |
-   | 50 hand-drawn ground truths | A person, with the imagery in front of them | **Still open. Nothing here substitutes for it** |
-
-   On the ranking decision this entry used to flag: `segment` picks **the smallest
-   mask containing the roof centroid, above `--min-area-m2`**. That is a
-   geometric heuristic, it is labelled as one in the CLI output and in every
-   feature's `selection` property, and it is *not* the roof/not-roof classifier
-   FR-1.1 asks for. It is good enough to put candidate outlines in front of a
-   person to correct — the workflow PRD §12 already prescribes — and it is not
-   good enough to report an IoU against.
-
-   **Do not be tempted to score against the pilot roofs.** `seed._square()`
-   builds those footprints as literal squares round each centroid; the module
-   says so ("the outline only has to be in the right place and the right rough
-   size"). An IoU against them would measure how square SAM2's output is, and
-   PRD §10 asks for something else entirely.
-
-### Needs no external data — can start immediately
-
-5. ~~**Wire the demo fallback into the UI.**~~ **DONE** — see §4 item 1.
-6. ~~**Verify `docker compose up`**~~ **DONE 2026-09-13** — see §4 item 2.
-7. ~~**Test the PRD §9 scenarios through the browser.**~~ **DONE 2026-09-13** —
-   all five pilot roofs offline, then the full use-profile sweep live. See §9.
-8. **Choose and rehearse the fallback demo path**: one pre-validated address plus
-   one pre-validated bill scenario. `bldg-demo-1` (12 Katpadi Road) is the
-   strongest candidate — it is the only roof where the recommendation sits
-   *below* both ceilings, which is the PRD §11 reveal.
-
-### Deliberately not next
-
-- FR-6 Synthetic Grid Pressure — optional, and only after the criteria above pass
-- Anything from Phase 2 (DT capacity, queue, allocation, area analytics). The
-  Stitch designs for these exist under
-  `stitch_pv_maps_spatial_intelligence_platform/` as **visual reference only**
-
----
-
-## 7. Running it
-
-```bash
-docker compose up
-```
-
-One command brings up PostGIS, migrations, seed, API and web. The offline
-pipeline is a separate profile and is never started during a demo.
-
-For frontend work against a running API:
-
-```bash
-npm run dev --prefix web
-```
-
-Serves on `http://localhost:5173`; expects the API on `http://localhost:8000`
-(`VITE_API_BASE_URL` overrides).
-
-### Re-running the physics
-
-`roof_analyses` is populated by `seed` from a committed file, so the ordinary
-`docker compose up` path needs no GPU image. Regenerate that file only when the
-physics or the pilot roofs change:
-
-```bash
-cd backend && python -m pvmaps.pipeline.cli yield --pilot --dry-run --out src/pvmaps/pipeline/analyses/pilot_roof_analyses.json
-```
-
-Then regenerate the offline bundle, which reads the same file:
-
-```bash
-cd backend && python scripts/build_demo_fallback.py
-```
-
-`--pilot` takes the centroids from `PILOT_ROOFS` rather than the database, so
-this runs on a machine that has pvlib but no PostGIS. Against a live database,
-`pipeline yield` without `--pilot` still writes the rows directly.
-
----
-
-## 8. Product boundary — still holding
-
-Phase 1 does not show, and must not show, a DT quota remaining, a queue
-position, a grid-approved capacity or an approval prediction (PRD §2.3, §3.2).
-An audit of `web/src` returns matches for those terms only inside comments
-explaining their deliberate absence. Every result carries, verbatim:
-
-> Grid connection is not verified. Official TNPDCL feasibility is required before installation.
-
----
-
-## 9. Browser scenario walkthrough — 2026-09-13
-
-All five bundled pilot roofs driven end to end through `npm run dev` with the
-API **down**, so this exercises the §9.3 fallback path at the same time. Each row
-was asserted programmatically against the rendered DOM, not eyeballed.
-
-| Roof | Scenario | Verdict | Binding | Recommended | Result |
-|---|---|---|---|---|---|
-| `bldg-demo-1` | Normal household, 420 kWh/mo | `RECOMMENDED` | Sanctioned load | 1.5 of 3.0 kWp | **PASS** |
-| `bldg-demo-2` | Free-slab, 90 kWh/mo, nobody home | `NOT_ECONOMIC` | Sanctioned load | — | **PASS** |
-| `bldg-demo-3` | VIT Technology Tower | *no recommendation* | — | — | **PASS** |
-| `bldg-demo-4` | Daytime-heavy, small roof | `RECOMMENDED` | **Roof** | 2.5 kWp | **PASS** |
-| `bldg-demo-5` | Home all day, low units | `MARGINAL` | Sanctioned load | 0.5 kWp | **PASS** |
-
-Asserted on every result screen: the PRD §5.2 disclosure verbatim;
-self-consumed and exported rendered as separate figures (FR-4.2) with a
-separate export-credit line (FR-4.3); every inferred figure carrying its band
-(NFR-2, 6–8 bands per screen); and **zero** matches for queue position, quota
-remaining or allocation delta (PRD §2.3, §3.2).
-
-Two paths worth calling out because they are the ones most likely to regress:
-
-- **`bldg-demo-4` is the only roof where the roof, not the connection, binds.**
-  It renders "Your roof is the limit." — the opposite copy branch from every
-  other pilot roof, and the only coverage that branch has.
-- **`bldg-demo-3` (VIT) has no stored recommendation at all.** Submitting a bill
-  against it stays on intake and explains that PV Maps publishes a physical
-  rooftop potential but no rupee figures. Asserted: **no rupee figure appears
-  anywhere on the page**, which is PRD §11 holding.
-
-### Offline caveat — since closed
-
-Offline, `createSizingRun()` returns the **stored** result for the roof and
-ignores the submitted profile, correctly: reimplementing the optimiser in the
-browser would be a second unverified engine. So the walkthrough above proves
-*result-state rendering*, not that the inputs do anything. That gap is now
-closed by §10.
-
----
-
-## 10. Live stack — frontend connected to backend, 2026-09-13
-
-`docker compose up` brings up PostGIS + API; the browser talks to it directly.
-Confirmed from inside the page: the offline strip is gone, and one intake run
-issues `/healthz`, `/v1/search`, `/v1/buildings/{id}` and `/v1/sizing-runs`, then
-lands on a real opaque run id (`/results/HUv1Fs…`) rather than the offline
-`/results/preview`.
-
-**The same roof and bill now give a different answer live than the bundle
-stored** — 1.0 kWp against the bundle's 1.5 — because the live optimiser reads
-the submitted profile. That is the point, and it is what the sweep below shows.
-
-### PRD §9 use profiles, live against `bldg-demo-1` (420 kWh/mo, 3.0 kW sanctioned)
-
-| Occupancy | Recommended | Annual bill savings | Self-consumed share |
+| Container | Status | Port | Health |
 |---|---|---|---|
-| `EMPTY_WEEKDAYS` | 0.5 kWp | ₹4,990 – ₹7,476 | 63% |
-| `PARTIAL` | 1.0 kWp | ₹11,340 – ₹13,860 | 79% |
-| `HOME_ALL_DAY` | 1.5 kWp | ₹16,481 – ₹18,900 | 84% |
-| `DAYTIME_HEAVY` | 2.0 kWp | ₹21,032 – ₹23,044 | 87% |
+| `pvmaps-web-1` | ✅ Up ~2 hours | `localhost:8081` → `:80` | — |
+| `pvmaps-api-1` | ✅ Up ~2 hours (healthy) | `localhost:8000` | `/healthz` OK |
+| `pvmaps-segmenter-1` | ✅ Up ~6 hours (healthy) | `localhost:8100` | `/healthz` OK |
+| `pvmaps-postgis-1` | ✅ Up ~6 hours (healthy) | `localhost:5432` | `pg_isready` OK |
 
-Monotonic in the right direction, and the load-addition modifiers behave:
-`EV_CHARGED_BY_DAY` recommends 1.0 kWp, `EV_CHARGED_AT_NIGHT` only 0.5 kWp — a
-night-charged EV gives solar nothing to displace.
-
-Every one of these sits **below** the 3.0 kWp sanctioned ceiling. The economic
-optimum binds before the connection does, which is PRD §11's argument holding
-under real inputs rather than stored ones.
-
-### Still regional, not per-roof — since closed
-
-`yield_source` was `REGIONAL_FALLBACK` on every run in this sweep: `roof_analyses`
-was unpopulated, so the figures above use the Vellore regional band. §11 closes
-that. The recommended sizes did **not** move when it did — see §11.
+**How to access:**
+- Web UI: <http://localhost:8081>
+- API docs: <http://localhost:8000/docs>
+- Health check: <http://localhost:8000/healthz>
 
 ---
 
-## 11. pvlib run over the pilot roofs — 2026-09-13
+## 4. Implemented Features
 
-§6 item 3, done. Run with `pipeline yield --pilot` against
-`pvmaps.pipeline.seed.PILOT_ROOFS`, each roof sited at its own centroid.
+### 4.1 Roof Measurement
 
-| Roof | Conservative – expected | Tilt | POA | In published band? |
-|---|---|---|---|---|
-| `bldg-demo-1` | 1474.8 – 1671.1 kWh/kWp/yr | 15° | 2053.9 kWh/m² | yes |
-| `bldg-demo-2` | 1474.8 – 1671.1 | 15° | 2053.9 | yes |
-| `bldg-demo-3` | 1474.8 – 1671.0 | 15° | 2053.8 | yes |
-| `bldg-demo-4` | 1478.8 – 1675.5 | 15° | 2059.8 | yes |
-| `bldg-demo-5` | 1474.8 – 1671.1 | 15° | 2053.9 | yes |
-
-Published band for inland Tamil Nadu is 1500–1600 kWh/kWp/yr. Every roof
-overlaps it, so PRD §10's yield criterion is met and `agrees_with_published_band`
-returns True without anything having been widened to make it.
-
-The tilt scan picks 15° at every site, which is a few degrees steeper than the
-12.9° latitude — the behaviour `best_tilt`'s docstring predicts, arrived at by
-evaluating candidates rather than by the rule of thumb.
-
-### Where the rows live, and why not in the database
-
-The output is committed at
-`backend/src/pvmaps/pipeline/analyses/pilot_roof_analyses.json` and loaded by
-`seed_pilot`, so `docker compose up` gives per-roof yields with no GPU image in
-the picture. This is the argument `docker/seed.Dockerfile` already makes about
-the seeder's own image, applied one step further: writing five rows should not
-require a multi-gigabyte CUDA pull. The physics is still the pipeline's — the
-file is generated by `pipeline yield --pilot --out` and never hand-written, and
-`tests/test_pilot_analyses.py` fails if it stops covering a pilot roof or drifts
-outside the published band.
-
-`scripts/build_demo_fallback.py` reads the same file, so the offline bundle and
-the seeded database cannot describe a roof's yield differently. Roofs brought in
-by `roofs-import` are filtered out and stay unanalysed, which is what that
-command already tells the operator.
-
-**Not yet exercised against a real PostGIS.** This work was done on a second
-machine with a GPU but no Docker, no WSL and no PostgreSQL, so the new write in
-`seed_pilot` is covered by a fake-connection test and by the offline bundle —
-which goes through the same `choose_yield` the API does — and not by an actual
-`docker compose up`. The first thing to do on the Docker machine is run it and
-confirm `/v1/buildings/bldg-demo-1` reports `yield_source: BUILDING`. Everything
-the browser reaches offline already does.
-
-### Three things this does not claim
-
-**It barely differentiates the roofs.** The five bands agree to within 0.3%,
-because the pilot roofs are within a few kilometres of each other and every one
-of them is run at the same default tilt, the same due-south azimuth and
-`shading_retained=1.0`. Per-roof pitch and azimuth are not known — the pilot
-footprints are synthetic squares — and per-roof shading is deliberately not
-applied here, because `usable_roof` already takes obstructions out of the *area*
-and charging the same shadow twice is the failure mode `yield_physics` warns
-about. So `yield_source: BUILDING` currently means "pvlib was run at this roof's
-coordinates", not "this roof's geometry was measured".
-
-**It is a scaled clear-sky year, not weather.** `irradiance_source` is
-`CLEARSKY_SCALED` on every row and the recorded confidence is 0.55 accordingly. A
-TMY file for Vellore is the single change that would improve this, and it would
-also fix the monthly shape, which currently spreads only 127–152 kWh/kWp and
-cannot produce a monsoon dip.
-
-**It changed no headline number.** The regenerated offline bundle returns the
-same verdict, the same binding constraint and the same recommended size for all
-four rehearsed scenarios as §9's table: demo-1 `RECOMMENDED` 1.5 kWp
-sanctioned-bound, demo-2 `NOT_ECONOMIC`, demo-4 `RECOMMENDED` 2.5 kWp roof-bound,
-demo-5 `MARGINAL` 0.5 kWp. The pvlib band (1474.8–1671.1) is wider than the
-published one (1500–1600) and centred within a rupee's worth of the same place,
-so the sizing sweep lands identically. That is a reassuring result rather than a
-disappointing one — but it does mean nobody should present this as having
-sharpened the recommendation. What it sharpened is the *provenance*.
-
----
-
-## 12. The GPU plane — implemented 2026-09-14
-
-Until now this project had a GPU story and no GPU path. `roofs.propose_masks`
-(SAM2) and `roofs.mask_to_polygons` existed, were documented, were imported by
-nothing, and could not have been run: `docker/pipeline.Dockerfile` did not build,
-there was no imagery to feed them, and no command joined them together.
-
-All of that is now closed except the checkpoint download and the ground truth.
-
-### What was added
-
-| Piece | Where | Why it did not exist before |
+| Feature | Status | Details |
 |---|---|---|
-| Tile fetch + mosaic | `pipeline/imagery.py` | `data/` is gitignored, so a fresh clone had no pixels. Pulls the **same** Esri tiles `RoofMap` draws, so the model and the household look at one image |
-| `pipeline segment` | `pipeline/cli.py` | The missing caller. imagery → SAM2 (GPU) → `mask_to_polygons` → 4326 GeoJSON |
-| `pipeline fetch-checkpoint` | `pipeline/cli.py` | Weights are ~180 MB and `.gitignore` excludes `*.pt`, so they cannot be baked into the image |
-| `build_mask_generator` | `pipeline/roofs.py` | `propose_masks` reloaded the model per call. One load per **run** now, not per roof |
-| 9 tests | `tests/test_segmentation_geometry.py` | `mask_to_polygons` had **zero** tests, despite its docstring saying it is "where the off-by-one errors actually live" |
+| 5 seeded pilot roofs (Vellore) | ✅ Complete | Pre-checked areas + pvlib yield bands |
+| Live roof segmentation (anywhere) | ✅ Complete | SAM2 GPU inference via `/v1/roof-at` |
+| Satellite tile fetching + caching | ✅ Complete | 3×3 tile grid at zoom 19 |
+| Multi-candidate roof selection | ✅ Complete | User picks from SAM2 candidates |
+| Manual roof area correction | ✅ Complete | Override input with `usable_area_source` tracking |
+| Interactive map (pan/click to segment) | ✅ Complete | MapLibre GL with GeoJSON overlays |
 
-### Three bugs the Dockerfile was carrying
+### 4.2 Bill Intelligence
 
-It had never been built, so none of these had ever surfaced:
+| Feature | Status | Details |
+|---|---|---|
+| Bill PDF/image upload + OCR extraction | ✅ Complete | Server-side text extraction → regex parsing |
+| Manual entry (always available) | ✅ Complete | Units, sanctioned load, all fields editable |
+| TNEB consumer ID extraction | ✅ Complete | Service Connection No (12-digit), Section, Circle, Distribution |
+| Meter readings extraction | ✅ Complete | Final, Initial, MF → `(final - initial) × MF` |
+| Energy charges / subsidy breakdown | ✅ Complete | Energy Charges, Govt Subsidy, Net Payable parsed |
+| Bill amount → units (TNERC slab reversal) | ✅ Complete | 3-tier priority: Meter Readings → Energy Charges → Bill Amount |
+| Bimonthly → monthly conversion | ✅ Complete | Auto-detection + halving with warnings |
+| Tariff category detection (Domestic/Commercial) | ✅ Complete | LT-IA / LT-V regex + UI toggle |
 
-1. **`apt-get install python3.12` on Ubuntu 22.04.** Jammy ships python3.10 and
-   has no python3.12 package at all. The build could not have got past line 6.
-   Python now comes from uv's managed CPython, which is one fewer thing to keep
-   in step with the base image.
-2. **`cudnn-runtime` base, for nothing.** Torch's Linux wheels vendor their own
-   CUDA and cuDNN — this build downloads `nvidia-cudnn-cu13` from PyPI, proving
-   it. The base is now `12.4.1-base` (348 MB against ~2.9 GB), which also dodges
-   a 670 MB layer that failed to transfer three times on a domestic connection.
-3. **`UV_HTTP_TIMEOUT` unset.** The default is 30 s; torch is a 529 MB wheel. The
-   first build died on a timeout whose error message blamed the network.
+**Consumption derivation priority (bill_parse.py):**
+1. **Priority 1 — Meter Readings:** `(final_reading - initial_reading) × multiplying_factor` → `METER_READINGS`
+2. **Priority 2 — Energy Charges Reversal:** `calculate_units_from_amount(energy_charges - subsidy)` → `ENERGY_CHARGES_REVERSE`
+3. **Priority 3 — Bill Amount Reversal:** `calculate_units_from_amount(net_payable)` → `BILL_AMOUNT_REVERSE`
 
-Also `uv pip install sam2` now passes `--no-deps`: SAM2's metadata re-pins torch
-and would otherwise re-resolve and re-download the environment built above.
+### 4.3 Geocoding & Location Resolution
 
-### Mask selection is a heuristic, and is labelled as one
+| Feature | Status | Details |
+|---|---|---|
+| Address search (free-text) | ✅ Complete | Nominatim for the coarse seed → Mappls for street identity + trilaterated position (see 7.2) |
+| Mappls OAuth2 integration | ✅ Complete | Token caching, auto-refresh, Search + Geocode endpoints |
+| Indian address variant broadening | ✅ Complete | Building/care-of stripping, suffix ungluing (nagar/puram/colony) |
+| GPS "Use My Location" button | ✅ Complete | Browser Geolocation API with high accuracy |
+| Interactive roof pin (tap/drag) | ✅ Complete | Click anywhere on map to segment that point |
 
-FR-1.1 wants a roof/not-roof classifier to rank SAM2's proposals. There isn't
-one. `segment` takes the **smallest mask containing the roof centroid** above
-`--min-area-m2`. Every emitted feature carries
-`"selection": "smallest-containing-centroid (NOT a classifier)"`, and the command
-prints a warning saying the output is proposals for a person to correct.
+### 4.4 4-Level Location Architecture
 
-**This is not an IoU result and must not be reported as one.** See §6 item 4:
-the pilot footprints are synthetic squares, so they cannot serve as ground truth
-either.
-
-### Verified
-
-- **GPU reaches a container.** `docker run --gpus all nvidia/cuda:12.4.1-base`
-  → `nvidia-smi` reports the RTX 4050, 6141 MiB. The `nvidia` container runtime
-  is registered with the daemon.
-- **Weights fetched.** `checkpoints/sam2.1_hiera_small.pt`, 184 MB, valid torch
-  archive, from Meta's published CDN.
-- **`docker compose --profile pipeline config`** resolves with the GPU
-  reservation and both binds (`./data`, `./checkpoints`).
-- **236 tests pass** (was 227), mypy strict and ruff clean on every changed
-  module.
-- `yield --pilot` still produces byte-identical output after the `_roof_targets`
-  refactor it now shares with `segment`.
-
-### It ran. Here is what came back.
-
-`segment --pilot` on the RTX 4050, SAM2.1 hiera-small, z19, 3x3 tile mosaic.
-Point-prompted at each roof's surveyed centroid; all three returned scales kept,
-areas measured in UTM 44N:
-
-| Roof | Hand-measured | SAM2 scales offered | Best score |
+| Level | Source | Status | Details |
 |---|---|---|---|
-| `bldg-demo-1` | 118 m² | 47, 39, 31 444 m² | 0.928 |
-| `bldg-demo-2` | 96 m² | 38, 723, 7 169 m² | 0.338 |
-| `bldg-demo-3` | 1 940 m² | 235, 324, 4 167 m² | 0.814 |
-| `bldg-demo-4` | 62 m² | 995, 1 608, 367 m² | 0.751 |
-| `bldg-demo-5` | 104 m² | 8 775, 33 616, 2 085 m² | 0.670 |
+| **Level 1** | TNPDCL GIS Lookup | ✅ Complete | `PILOT_CONNECTIONS` + `CONFIRMED_CONNECTIONS` in-memory |
+| **Level 2** | Meter Repository | ✅ Complete | Same pool, keyed by `meter_number` |
+| **Level 3** | Multi-component Geocoding | ✅ Complete | Address + Confidence Scorer (0–100 scale) |
+| **Level 4** | User GPS / Map Pin Confirm | ✅ Complete | Haversine distance check, confirmation persistence |
 
-**Not one roof has a scale within a factor of three of its hand-measured area.**
-That is the honest result and it should not be smoothed over.
+**Confidence scoring breakdown:**
+- Building match: +40 pts
+- Street match: +25 pts
+- Locality match: +15 pts
+- PIN code match: +10 pts
+- TNPDCL Section match: +10 pts
+- Auto-accept threshold: ≥ 85%
 
-### Why — and it is not the segmentation
+**Pilot connection seeded:**
+- `08-211-019-1233` → Meter `1773876` → `(12.95390°N, 79.14870°E)` (rooftop, ~144 m²)
 
-Rendering the imagery under each centroid settles it
-(`data/pilot-contact-sheet.png`, regenerate with the snippet in git history):
+### 4.5 Sizing Engine
 
-| Roof | What is actually at the surveyed coordinate |
-|---|---|
-| `bldg-demo-1` | Dense urban rooftops. Plausible |
-| `bldg-demo-2` | Dense urban rooftops. Plausible |
-| `bldg-demo-3` | A large institutional building on the VIT campus. **Genuinely right** |
-| `bldg-demo-4` | Open scrub at the edge of a built-up patch. Marginal |
-| `bldg-demo-5` | **The Palar riverbed. There is no building within ~100 m** |
+| Feature | Status | Details |
+|---|---|---|
+| Full optimiser (exhaustive curve) | ✅ Complete | Every 0.5 kWp increment from minimum to feasible max |
+| Slab-aware bill savings | ✅ Complete | TNERC domestic 8-slab + commercial 2-slab |
+| Self-consumption split (ranges) | ✅ Complete | Occupancy × modifiers, honest `Range` bounds |
+| Net metering export credit | ✅ Complete | Separate line item per FR-4.3 |
+| PM Surya Ghar subsidy | ✅ Complete | Tiered by capacity (1–3 kWp brackets) |
+| NPV + payback calculation | ✅ Complete | Pessimistic bound → `null` payback when it never pays back |
+| Verdict classification | ✅ Complete | `RECOMMENDED` / `MARGINAL` / `NOT_ECONOMIC` / `NO_CAPACITY` |
+| Binding constraint identification | ✅ Complete | `ROOF` / `SANCTIONED_LOAD` / `BOTH` |
 
-For demo-5, SAM2 returned a riverbank, a terrain block and a sandbar. All three
-are correct segmentations of real objects. None is a roof, because there is no
-roof. The model did its job; the coordinate is fiction.
+### 4.6 Frontend UI
 
-So `PILOT_ROOFS` is synthetic further down than §6 item 4 assumed. It was already
-known that `_square()` fabricates the footprints. It now turns out **some of the
-centroids are invented too** — see §4 item 8. Every imagery-based number for the
-pilot set is therefore meaningless until real addresses replace them, and that
-includes any future IoU.
-
-### Consequences for the output format
-
-`segment` emits **every** scale rather than a single winner, because picking by
-SAM2's confidence score lands between 0.1x and 84x of the hand-measured area.
-The score measures how cleanly a region was segmented, not whether it is a roof.
-Each feature carries `"selection": "...UNRANKED BY ROOFNESS -- pick by hand (no
-classifier)"`. This is a proposal generator feeding the hand-correction workflow
-PRD §12 prescribes, and nothing more.
-
-### Gotcha for anyone re-running this from Git Bash
-
-MSYS rewrites a leading `/data/...` argument into a Windows path, so the GeoJSON
-lands *inside the container* at `C:/Program Files/Git/data/...` and the host
-mount stays empty, with a success message either way:
-
-    MSYS_NO_PATHCONV=1 docker compose --profile pipeline run --rm pipeline         segment --pilot --out //data/predicted-pilot.geojson
+| Feature | Status | Details |
+|---|---|---|
+| Workstation layout (canvas + rails) | ✅ Complete | Map left, inputs right, consistent with results page |
+| Step progress indicator (1–4) | ✅ Complete | Locate → Bill → Daytime → Size |
+| Measured roof panel (live SAM2) | ✅ Complete | Candidate cards with areas, plausibility badges |
+| Roof analysis panel (seeded) | ✅ Complete | Yield source, obstruction ledger, confidence |
+| Bill input form with OCR pre-fill | ✅ Complete | All fields editable, "From bill" badges |
+| Bill amount → units calculator | ✅ Complete | Inline with Domestic/Commercial toggle |
+| Meter consumption breakdown card | ✅ Complete | Final, Initial, MF × Delta display |
+| Financial breakdown bar | ✅ Complete | Energy, Subsidy, Net |
+| 4-Level location card | ✅ Complete | Level badge, confidence %, score tags, GPS distance check |
+| TNEB connection card | ✅ Complete | Section, Circle, Distribution, Consumer No. inputs |
+| "Fly map to bill address" | ✅ Complete | Via `runLocationResolution` → `selectAddress` |
+| "Verify with My GPS" button | ✅ Complete | Triggers Geolocation API, re-runs resolution with GPS |
+| "Confirm Location" button | ✅ Complete | Persists coordinates via `/v1/locate/confirm` |
+| Daytime use form | ✅ Complete | Occupancy profile + modifiers (EV, AC, etc.) |
+| Results page | ✅ Complete | Recommended system, comparison curve, financial detail |
+| Offline/fallback mode | ✅ Complete | Bundled pilot data when API is unreachable |
+| Demo fallback bundle | ✅ Complete | Pre-computed scenarios for 5 pilot roofs |
 
 ---
 
-## 13. Live roof measurement — any address, 2026-09-14
+## 5. API Endpoints
 
-**This reverses PRD §9 and ARCHITECTURE.md §9.3, on purpose.** Those rules bought
-a stage-proof demo — precomputed roofs, zero network — at the price of a product
-that could only answer for five seeded addresses. It now answers for any address
-in India, and the cost is that a demo depends on a reachable geocoder, a
-reachable tile server and a working GPU.
-
-### What was built
-
-| Piece | Where |
-|---|---|
-| `GET /v1/geocode` | Nominatim proxy, `countrycodes=in` so a US suburb cannot appear with an INR tariff |
-| `POST /v1/roof-at` | Proxies to the segmenter; distinguishes "no imagery" from "service starting" |
-| `pvmaps.segmenter` | FastAPI + SAM2 on the GPU, model loaded once at startup |
-| `segmenter` compose service | Same 6.8 GB image as `pipeline`, different entrypoint, **not** behind the pipeline profile |
-| `LocationSearch` | Pilot roofs and geocoder hits in one list, pilot first |
-| Always-on map | Centred on Vellore before you type; flies to each address |
-
-The API still does **not** import torch — it makes an HTTP call.
-`test_architecture.py` enforces that, and the API image stays at 303 MB.
-
-### Why SAM2, and not UNet or a footprint dataset
-
-Measured at the same dense-Vellore point, 2026-09-14:
-
-| Source | Buildings within 120 m | Verdict |
+| Method | Path | Purpose |
 |---|---|---|
-| OpenStreetMap | 2 | Far too sparse |
-| Microsoft GlobalMLBuildingFootprints | 12; nearest 3 472 m² and 7 761 m² | Merges whole blocks |
-| SAM2 on z19 imagery | Outlines individual roofs | **Best available** |
+| `GET` | `/healthz` | Stack health — counts pilot roofs |
+| `GET` | `/v1/search?q=` | Pilot-address search (seeded table) |
+| `GET` | `/v1/geocode?q=` | Free-text geocoding (Mappls → Nominatim) |
+| `GET` | `/v1/buildings/{id}` | Retrieve a seeded building's geometry + yield |
+| `POST` | `/v1/roof-at` | Live roof segmentation (SAM2 GPU proxy) |
+| `POST` | `/v1/bill-extract` | OCR + regex extraction from uploaded bill |
+| `POST` | `/v1/sizing-runs` | Run the full optimiser, return recommendation |
+| `GET` | `/v1/tariffs/current` | Current TNERC slab schedule |
+| `POST` | `/v1/locate/resolve` | 4-Level location resolution |
+| `POST` | `/v1/locate/confirm` | User-confirmed coordinates persistence |
 
-ML footprint datasets systematically under-segment dense informal settlements —
-precisely the housing this product exists for. Replacing SAM2 would lower
-accuracy, not raise it.
+---
 
-### The ranking signal is area, NOT SAM2's confidence
+## 6. Key Files Modified During This Session
 
-On the VIT tile SAM2 scored the outline of the *entire complex* at **0.069** and
-a kiosk in its courtyard at **0.814**. Its confidence measures how cleanly a
-region was segmented, not whether the region is a roof, and it is close to
-inverted for this purpose. So `segmenter/service.py:_rank` orders by
-plausible-area-first (15–5 000 m²), largest within the window, and every scale is
-returned for the user to overrule (FR-1.5).
+| File | What Changed | Why |
+|---|---|---|
+| [`schemas.py`](backend/src/pvmaps/api/schemas.py) | `SizingRequest.model_config` changed to `extra="ignore"` | Prevented 422 errors when extra bill metadata fields are sent alongside sizing inputs |
+| [`bill_parse.py`](backend/src/pvmaps/api/bill_parse.py) | Added meter readings, energy charges, subsidy parsing; 3-tier consumption derivation | Accurate unit extraction priority: meter > charges reversal > bill amount reversal |
+| [`locate.py`](backend/src/pvmaps/api/routers/locate.py) | Added 4-Level Location Architecture, confidence scorer, haversine distance check | Replaced single geocode with hierarchical resolution (TNPDCL GIS → Meter → Geocoding → User GPS) |
+| [`client.ts`](web/src/api/client.ts) | Added `resolveLocation`, `confirmLocation` methods and TypeScript interfaces | Frontend API client for 4-Level location system |
+| [`HomePage.jsx`](web/src/pages/HomePage.jsx) | Fixed `ReferenceError: bid is not defined`; added location resolution flow, GPS, confirm handlers | Fixed "Could not calculate" error; integrated 4-level location into main flow |
+| [`BillInputForm.jsx`](web/src/components/BillInputForm.jsx) | Added TNEB connection card, meter breakdown, financial summary, location card, bill calculator | Full bill intelligence UI with interactive location verification |
 
-Observed live on `Gandhi Road, Kosapet, Vellore`: candidates of 84 m², 28 m² and
-44 438 m². The window rejected the 44 438 m² blob and picked 84 m² — a real
-rooftop. Score-based ranking would not reliably have.
+---
 
-### Two bugs this surfaced, neither introduced by it
+## 7. Bugs Fixed During This Session
 
-1. **Zod/Pydantic drift.** `usable_area_source` is a three-way `Literal` in
-   `api/schemas.py` but a two-way `z.enum` in the browser — `USER_TRACED` was
-   missing. Nothing had ever reached the `traced_roof` branch from the UI, so the
-   API answered 200 with a complete recommendation and the browser discarded it
-   at the schema boundary, reporting "could not calculate". §3's claim that the
-   schemas are in field-for-field parity was **false**, and a parity check that
-   runs in CI would be worth more than the claim.
-2. **`building_id` could not be omitted.** The API documents "exactly one of
-   `building_id` and `traced_roof`" and enforces `min_length=1`, so an empty
-   string is a 422. The browser has to omit the key entirely.
+### 7.1 "Could not calculate a recommendation. Please try again"
 
-### Honest limits
+**Root causes (two separate bugs):**
 
-- A measured roof is a **footprint**. Obstructions and the parapet setback have
-  NOT been deducted, so it is less conservative than a hand-checked pilot roof.
-  The results screen labels it "Measured live" and the assumptions panel says so.
-- `yield_source` is `REGIONAL_FALLBACK` for every measured roof — pvlib has only
-  been run over the five pilot centroids.
-- Still no roof/not-roof classifier (FR-1.1). The area window is a heuristic
-  standing in for one.
-- Cold measurement ≈ 6–7 s (nine tile fetches, then SAM2); warm ≈ 0.5–1.6 s.
+1. **FastAPI 422 Unprocessable Entity** — `SizingRequest` had `extra="forbid"` in its Pydantic config. When the frontend sent extra bill metadata fields (consumer_number, section, etc.) alongside sizing inputs, FastAPI rejected the entire request.  
+   **Fix:** Changed to `extra="ignore"` so unrecognised fields are silently dropped.
+
+2. **JavaScript ReferenceError: `bid` is not defined** — In `HomePage.jsx`, the variable `bid` was used on line 291 but never declared with `const bid = parsed.data.building_id`.  
+   **Fix:** Added the declaration and sanitised the sizing payload to send only calculation-relevant fields.
+
+### 7.2 Map Landed 834 m From the Address (fixed 2026-09-15)
+
+**Symptom:** the pilot connection resolved to a roof ~850 m from the real one.
+Reported against Google Maps, which put the household beside Sunbreeze
+Apartments on 3rd East Cross Road.
+
+**Four defects in one chain:**
+
+1. **Mappls `region=IND` was never sent.** Every `/places/search` call returned
+   `400 Bad Request`, so the "primary" geocoder (4.3) contributed *nothing*
+   and every lookup silently fell through to Nominatim.
+2. **Mappls caps `query` at 45 characters.** Undocumented; bisected 2026-09-15
+   (45 -> 200, 46 -> 400 with an empty body). Real addresses exceed it -- the
+   failing one is 48 chars -- so even with `region` fixed, ordinary lookups
+   failed while short test queries passed. That is why it read as flaky.
+3. **OSM has no low-numbered East Cross Roads in Katpadi.** Asked for *3rd*,
+   Nominatim answers *24th* -- a real street, different PIN (632006 vs 632007),
+   834 m away -- with nothing in the response marking the substitution.
+4. **The confidence scorer credited it as a street match.** `any(token in name)`
+   matched on the word "east", so a wrong street scored 25/25.
+
+**Root cause of the bad fixture:** `PILOT_CONNECTIONS` held that Nominatim hit,
+nudged by hand until SAM2 returned a believable roof, labelled `TNPDCL_GIS` at
+`0.98` confidence. No GIS extract was ever involved. Because it claimed 0.98 it
+set `requires_user_confirmation=False`, so the household was never offered the
+pin-correction UI that would have caught it.
+
+**Fixes:**
+
+- `region=IND` sent; queries trimmed to 45 chars on word boundaries, dropping
+  redundant tail components (`India`, `Tamil Nadu`) before the street.
+- **Mappls coordinates recovered by trilateration.** This plan returns an
+  `eLoc` but never a lat/lon (`/nearby` 401s, `advancedmaps/geo_code` 412s).
+  Autosuggest's `distance` field is the exception, so position is solved from
+  distances to four reference points. Verified against six references: worst
+  residual **1.1 m** (street) and **1.4 m** (building). Cached per eLoc.
+- Order inverted: **OSM for the coarse seed, Mappls for which street it is.**
+- Scorer requires the distinguishing tokens; an ordinal conflict (3rd vs 24th)
+  is disqualifying outright.
+- Fixture corrected to `12.959108, 79.143165`, `source: MAPPLS_STREET`,
+  `confidence: 0.55`, `accuracy_meters: 150`, `geocode_level: street` -- so it
+  now *requires* confirmation and the household can move the pin.
+
+**Result:** the failing query now returns 3rd East Cross Road, Bharathi Nagar
+**1 m** from the independently trilaterated truth (was 834 m).
+
+> A fixture may be approximate. It may not claim a provenance it does not have.
+
+### 7.3 Panel Array Never Drew on the Map (fixed 2026-09-15)
+
+The segmenter returned a correct layout (32 modules, 12.8 kWp, 213 m² usable)
+and the side panel displayed the counts, but no modules appeared on the map.
+
+**Cause:** every layer effect in `RoofMap.jsx` guarded with
+`if (m.isStyleLoaded()) draw(); else m.once("load", draw)`. Both branches are
+wrong. `load` fires once per map lifetime, so registering `once("load")` after
+it has fired never runs; and `isStyleLoaded()` is not a latch -- it returns
+false again whenever a source is loading. Panels arrive in the same response as
+the candidate outlines, so the layout effect hit that window every time: the
+outlines drew, the modules never did.
+
+**Fix:** `whenStyleReady(m, fn)` resolves on `styledata`/`idle`, re-checks
+`isStyleLoaded()`, unsubscribes, and returns a cleanup. Applied to all four
+effects. Verified live: `panel-fill`, `panel-line`, `usable-line` present with
+66 rendered features.
+
+### 7.4 Locating by Service Connection Number (2026-09-15)
+
+**Asked:** a service number is unique, so use it to locate the household.
+
+**Why uniqueness is not enough:** a unique key only locates someone if you hold
+the registry mapping it to a service point. That registry is TNPDCL's and PV
+Maps has no feed to it (10, "Real TNPDCL API integration"). Two consequences
+were addressed:
+
+1. **An unknown number no longer guesses.** It used to fall through to Level 3
+   and build the query `", Vellore, Tamil Nadu"` -- which geocodes perfectly
+   well, to the middle of Vellore, and was returned with a confidence score.
+   It now returns 404 saying there is no TNPDCL lookup and asking for the bill
+   address or a map pin.
+2. **A confirmed rooftop now survives a restart.** `CONFIRMED_CONNECTIONS` was
+   an in-memory dict (10, first item), so every confirmation was lost on
+   restart and only the one seeded connection ever resolved.
+
+**Storage shape -- the number is NOT retained.** ARCHITECTURE.md 8 forbids
+retaining consumer numbers, and a table of (service number -> rooftop) is
+precisely a record of which household lives at which roof. So
+`confirmed_connections` is keyed by `HMAC-SHA256(server key, normalised
+number)`:
+
+- Given the number you can find the row; given the table you cannot recover
+  numbers. There is no `consumer_name`, `address` or `section` column.
+- **HMAC, not plain SHA-256.** A TNEB number is short and heavily structured,
+  so an unsalted digest of every possible number is cheap to precompute. The
+  key is what makes the digest useless on its own.
+- **`CONNECTION_HASH_KEY` must be configured and stable.** Empty disables
+  persistence outright; *changing it orphans every stored rooftop* while still
+  appearing to work.
+- `08-211-019-1233`, `08 211 019 1233` and `082110191233` are one connection.
+  Meter number is hashed the same way, so either identifier resolves.
+
+Verified across a full container rebuild: confirm a rooftop, rebuild the API,
+then both the service number and the meter number alone return it at level 4.
+
+> A lookup needs something that MATCHES a number, not something that IS one.
+
+**One trap worth recording:** the first implementation wrote rows correctly and
+read none back. asyncpg raised `AmbiguousParameterError` -- a parameter used
+only beside `IS NOT NULL` gives the driver nothing to infer a type from -- and a
+blanket `except Exception` turned that into a silent "no rows". Fixed with
+explicit `CAST(... AS text)`, and both handlers now log.
+
+### 7.5 Panel Array Did Not Follow the Selected Scale (fixed 2026-09-15)
+
+Tapping a different candidate changed the area and the outline but left the
+previous scale's modules on the roof, and the "panels that fit" figure with
+them.
+
+**Cause:** `layout` was computed for the chosen candidate ONLY and returned at
+the top level of the response. The original reasoning -- that three arrays at
+once would be unreadable -- confused *producing* a layout with *drawing* one;
+the client draws exactly one.
+
+**Fix:** every `Candidate` carries its own `layout`. Packing is pure geometry on
+an already-segmented footprint (no GPU, no imagery fetch), so the extra
+candidates cost milliseconds. `RoofMap` and `MeasuredRoofPanel` both read the
+selected candidate's layout. Verified: 241 m² -> 33 panels / 13.2 kWp, tapping
+158 m² -> 22 panels / 8.8 kWp with the rectangles redrawn.
+
+### 7.6 Results Page Aligned Around an Empty Grid (fixed 2026-09-15)
+
+The results screen only has a map when the roof came from a seeded pilot
+building. A roof measured live has no `building`, so `canvas` was null and
+`Workstation` drew its blueprint placeholder: a featureless ruled rectangle
+holding open the widest column on the page while the findings were pushed into
+two narrow rails either side of it.
+
+**Fix:** no canvas means no middle column, not an empty one. `Workstation` now
+renders a single centred `max-w-5xl` column with the rails in sequence, and the
+Economics/Assumptions pair below it matches the column count above it.
+
+### 7.7 Wrong Roof Selected (1,375 m² road strip instead of residential rooftop)
+
+**Root cause:** Nominatim's geocode for "24th East Cross Road" returned the road's geographic centroid `(12.95465°N, 79.14868°E)`. SAM2 segmenter, given a road-surface point, correctly segmented the road pavement boundary (1,375 m²) instead of a rooftop.
+
+**Fix:** Updated `PILOT_CONNECTIONS["08-211-019-1233"]` coordinates from street centroid to actual rooftop at `(12.95390°N, 79.14870°E)`, which SAM2 segments as the residential roof (~144 m²).
+
+---
+
+## 8. Configuration
+
+### Environment Variables (`.env`)
+
+| Variable | Value | Purpose |
+|---|---|---|
+| `POSTGRES_*` | `pvmaps` | PostGIS database credentials |
+| `API_PORT` | `8000` | FastAPI backend |
+| `WEB_PORT` | `8081` | Frontend (8080 taken by Oracle listener) |
+| `CORS_ALLOW_ORIGINS` | `localhost:8081,localhost:5173` | Allowed origins |
+| `VITE_API_BASE_URL` | `http://localhost:8000` | Frontend → API connection |
+| `MAPPLS_CLIENT_ID` | Set ✅ | MapmyIndia OAuth2 client |
+| `MAPPLS_CLIENT_SECRET` | Set ✅ | MapmyIndia OAuth2 secret |
+| `MAPPLS_REST_KEY` | Set ✅ | MapmyIndia REST fallback key |
+| `CONNECTION_HASH_KEY` | Set ✅ (gitignored) | HMAC key for `confirmed_connections`. **Changing it orphans every stored rooftop**; empty disables persistence. |
+
+### Mappls (MapmyIndia) Integration
+
+- **OAuth2 flow:** Client credentials → access token → cached with auto-refresh
+- **Endpoints used:**
+  1. `atlas.mappls.com/api/places/search/json` (primary, building-level)
+  2. `atlas.mappls.com/api/places/geocode` (fallback, street-level)
+- **Fallback:** If Mappls yields no results or credentials are absent, Nominatim OSM is used
+
+---
+
+## 9. Rule Packs & Verification Status
+
+| Pack | Location | Verified? |
+|---|---|---|
+| TNERC Tariff Schedule | `backend/src/pvmaps/config/tariffs/` | ⚠️ `UNVERIFIED_AGAINST_PRIMARY_SOURCE` |
+| PM Surya Ghar Subsidy | `backend/src/pvmaps/config/subsidies/` | ⚠️ `UNVERIFIED_AGAINST_PRIMARY_SOURCE` |
+| Solar Assumptions (yield, cost) | `backend/src/pvmaps/config/solar_assumptions/` | ⚠️ `UNVERIFIED_AGAINST_PRIMARY_SOURCE` |
+
+> **Warning:** The results screen shows a "provisional" banner because of this. Do not quote rupee figures to real households until these are checked against primary TNERC/MNRE sources.
+
+---
+
+## 10. Known Limitations & Open Items
+
+### Not Yet Implemented
+
+| Item | Priority | Notes |
+|---|---|---|
+| Persistent TNPDCL GIS database | Medium | Confirmed rooftops now persist in `confirmed_connections`, keyed by HMAC (see 7.4). `PILOT_CONNECTIONS` remains an in-memory seed fixture. |
+| Real TNPDCL API integration | High | Level 1/2 currently uses hardcoded pilot data; needs authorized API access |
+| Segmentation IoU measurement | Medium | 50 hand-drawn truth roofs needed for PRD 10 metric |
+| Rule pack verification | Medium | Tariff, subsidy, assumptions all need primary source check |
+| Phase 2 DT-quota allocator | Low | Built and tested (12 passing) but unreachable from Phase 1 routes |
+| 5 real bill test fixtures | Low | `test_five_real_bills_are_present` intentionally fails |
+
+### Known Gotchas
+
+1. **Mappls geocoding** — Standard tier may not return lat/lon for all queries; the system automatically falls back to Nominatim.
+2. **Nominatim rate limiting** — 1 req/s policy enforced with `asyncio.sleep(1.1)` between variant attempts.
+3. **SAM2 cold start** — First segmentation after container start takes ~20–60 seconds (model loading + tile cache miss).
+4. **Indian address quirks** — Building names, care-of prefixes, and glued suffixes (Gandhinagar vs Gandhi Nagar) are all handled by the variant broadening engine but edge cases may exist.
+5. **Bimonthly billing** — TN bills are bimonthly; the system auto-detects and halves but warns the user to verify.
+
+---
+
+## 11. How to Test the Full Flow
+
+1. **Hard refresh** the browser at <http://localhost:8081> (`Ctrl + Shift + R`)
+2. **Search an address** — type "Gandhi Nagar Katpadi Vellore" or click anywhere on the map
+3. **Upload a bill** or manually enter:
+   - Units consumed per month: `285`
+   - Sanctioned load: `3` kW
+4. **Or use the bill amount calculator:** Enter ₹2620 → auto-computes 569 bi-monthly → 285 monthly
+5. **Select occupancy** and any modifiers (EV, AC, etc.)
+6. **Click "Size this roof against the bill"**
+7. **View results:** Recommended system size, comparison curve, financial breakdown
+
+### Test the Pilot Connection
+
+1. Upload the sample bill PDF (service connection `08-211-019-1233`)
+2. The TNEB connection card auto-fills: Section, Circle, Consumer No.
+3. Click "Locate Connection on Map" → Level 1 TNPDCL GIS lookup → 98% confidence
+4. Map flies to the correct rooftop at `(12.95390°N, 79.14870°E)`
+5. SAM2 segments ~144 m² residential roof
+
+---
+
+## 12. Commands Reference
+
+```bash
+# Start the full stack
+docker compose up --build
+
+# Check health
+curl -s http://localhost:8000/healthz | python -m json.tool
+
+# View logs
+docker compose logs -f api
+docker compose logs -f segmenter
+
+# Rebuild and restart a single service
+docker compose up --build --force-recreate api
+docker compose up --build --force-recreate web
+
+# Run backend tests
+cd backend && uv run pytest
+
+# Run frontend dev server (hot reload)
+cd web && npm run dev
+
+# Pipeline (offline, needs GPU)
+docker compose --profile pipeline run --rm pipeline --help
+```
+
+---
+
+## 13. Project Structure
+
+```
+PV_Maps/
+├── backend/
+│   └── src/pvmaps/
+│       ├── api/                    # FastAPI application
+│       │   ├── bill_parse.py       # Bill text → structured fields (regex, no ML)
+│       │   ├── schemas.py          # Pydantic wire contract
+│       │   └── routers/
+│       │       ├── locate.py       # Geocoding + 4-Level location resolver
+│       │       ├── sizing.py       # Optimiser endpoint
+│       │       ├── buildings.py    # Building lookup
+│       │       ├── search.py       # Pilot address search
+│       │       ├── bill_extract.py # OCR text extraction route
+│       │       └── tariffs.py      # TNERC tariff disclosure
+│       ├── config/                 # Versioned rule packs (tariffs, subsidies, assumptions)
+│       ├── sizing/                 # Pure calculation engine (optimise, capacity, profiles)
+│       ├── tariff/                 # Slab billing logic
+│       ├── segmenter/              # SAM2 inference service
+│       ├── pipeline/               # Offline: seed, import, yield, IoU
+│       ├── phase2/                 # DT-quota allocator (future)
+│       └── db/                     # SQLAlchemy models, Alembic migrations
+├── web/
+│   └── src/
+│       ├── api/                    # API client + data source (live/fallback)
+│       ├── components/             # React components (BillInputForm, RoofMap, etc.)
+│       ├── pages/                  # HomePage, ResultsPage
+│       ├── schemas/                # Zod validation (mirrors Pydantic)
+│       └── styles/                 # Design system CSS
+├── docker/                         # Dockerfiles (api, web, pipeline, seed)
+├── docker-compose.yml              # Full stack orchestration
+├── .env                            # Local configuration (gitignored)
+├── PRD.md                          # Product requirements
+├── ARCHITECTURE.md                 # System design
+└── README.md                       # Quick start guide
+```

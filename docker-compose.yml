@@ -74,6 +74,10 @@ services:
       MAPPLS_CLIENT_ID: ${MAPPLS_CLIENT_ID:-}
       MAPPLS_CLIENT_SECRET: ${MAPPLS_CLIENT_SECRET:-}
       MAPPLS_REST_KEY: ${MAPPLS_REST_KEY:-}
+      # Keys the confirmed-connection store. Empty means "do not persist" --
+      # see api/connection_id.py. A key that changed between restarts would
+      # orphan every stored rooftop while still appearing to work.
+      CONNECTION_HASH_KEY: ${CONNECTION_HASH_KEY:-}
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:

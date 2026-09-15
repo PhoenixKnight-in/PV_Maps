@@ -96,6 +96,41 @@ function bounds(geojson) {
     : null;
 }
 
+/**
+ * Run `fn` once the style can actually accept layers, and return a cleanup.
+ *
+ * The obvious `if (m.isStyleLoaded()) fn(); else m.once("load", fn)` is wrong
+ * in BOTH directions, and it silently dropped the panel array:
+ *
+ *   - `load` fires exactly once in a map's life. Registering `once("load")`
+ *     after it has already fired never runs -- the callback is simply lost.
+ *   - `isStyleLoaded()` is not a latch. It goes false again whenever a source
+ *     is loading, so an effect firing just after new GeoJSON was added sees
+ *     false, takes the `once("load")` branch, and never draws.
+ *
+ * Panels arrive in the same response as the candidate outlines, so the layout
+ * effect ran in exactly that window every time: the outlines drew, the modules
+ * never did.
+ */
+function whenStyleReady(m, fn) {
+  if (m.isStyleLoaded()) {
+    fn();
+    return () => {};
+  }
+  const attempt = () => {
+    if (!m.isStyleLoaded()) return;
+    m.off("styledata", attempt);
+    m.off("idle", attempt);
+    fn();
+  };
+  m.on("styledata", attempt);
+  m.on("idle", attempt);
+  return () => {
+    m.off("styledata", attempt);
+    m.off("idle", attempt);
+  };
+}
+
 export default function RoofMap({
   building,
   center,
@@ -207,10 +242,12 @@ export default function RoofMap({
     });
     ro.observe(el);
 
-    if (m.isStyleLoaded()) safeResize();
-    else m.once("load", safeResize);
+    const stopWaiting = whenStyleReady(m, safeResize);
 
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      stopWaiting();
+    };
   }, []);
 
   // Recentre and reposition draggable pin without remounting.
@@ -296,8 +333,7 @@ export default function RoofMap({
       }
     };
 
-    if (m.isStyleLoaded()) draw();
-    else m.once("load", draw);
+    return whenStyleReady(m, draw);
   }, [building]);
 
   // Live SAM2 candidates. The chosen one is drawn solid; the alternatives sit
@@ -366,8 +402,7 @@ export default function RoofMap({
       if (b) m.fitBounds(b, { padding: 64, maxZoom: 20, duration: 600 });
     };
 
-    if (m.isStyleLoaded()) draw();
-    else m.once("load", draw);
+    return whenStyleReady(m, draw);
   }, [candidates, chosenIndex]);
 
   // The usable plane and the modules that fit on it.
@@ -425,8 +460,7 @@ export default function RoofMap({
       }
     };
 
-    if (m.isStyleLoaded()) draw();
-    else m.once("load", draw);
+    return whenStyleReady(m, draw);
   }, [layout]);
 
   // ONE click handler, because the map has two meanings for a click and they

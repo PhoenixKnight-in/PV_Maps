@@ -22,7 +22,14 @@ export default function MeasuredRoofPanel({
   onPick,
   error,
 }) {
-  const layout = measured?.layout ?? null;
+  // The SELECTED candidate's array, not the response's default one. These two
+  // diverge the moment a household taps a different scale, and this panel is
+  // where they read the module count -- so it has to follow the selection or
+  // it reports the previous roof's array against the new roof's area.
+  const layout =
+    (chosenIndex != null ? measured?.candidates?.[chosenIndex]?.layout : null) ??
+    measured?.layout ??
+    null;
   if (measuring) {
     return (
       <Panel

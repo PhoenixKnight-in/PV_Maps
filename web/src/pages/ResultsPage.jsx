@@ -297,8 +297,17 @@ export default function ResultsPage() {
         }
       />
 
-      {/* Economics and provenance, full width beneath the workstation. */}
-      <div className="grid gap-3 px-4 pb-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      {/* Economics and provenance beneath the workstation.
+          Side by side only when there is a map above them: without one the
+          page is a single centred column, and a two-up row hanging off the
+          bottom of it is the misalignment, not a fix for it. */}
+      <div
+        className={
+          map
+            ? "grid gap-3 px-4 pb-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]"
+            : "mx-auto grid w-full max-w-5xl gap-3 px-4 pb-4"
+        }
+      >
         <EconomicsBreakdown recommendation={r} />
         <AssumptionsPanel recommendation={r} />
       </div>

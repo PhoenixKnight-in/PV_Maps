@@ -343,7 +343,7 @@ export default function HomePage() {
           center={mapCentre}
           candidates={measured?.candidates ?? null}
           chosenIndex={chosenIndex}
-          layout={measured?.layout ?? null}
+          layout={chosen?.layout ?? measured?.layout ?? null}
           onPickCandidate={pickCandidate}
           onPickPoint={measuring ? null : measureAt}
           fill
@@ -365,7 +365,7 @@ export default function HomePage() {
           label={address?.label}
           candidates={measured?.candidates ?? null}
           chosenIndex={chosenIndex}
-          layout={measured?.layout ?? null}
+          layout={chosen?.layout ?? measured?.layout ?? null}
           onPickCandidate={pickCandidate}
           onPickPoint={measuring ? null : measureAt}
         />

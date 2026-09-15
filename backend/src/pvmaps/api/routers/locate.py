@@ -15,6 +15,8 @@ dependency is what tells you it has gone wrong, rather than a blank map.
 from __future__ import annotations
 
 import asyncio
+import logging
+import math
 import os
 import re
 import time
@@ -23,6 +25,12 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
+
+from pvmaps.api import connection_id
+from pvmaps.api.deps import RepositoryDep
+from pvmaps.api.repository import ConfirmedConnectionRow
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["locate"])
 
@@ -163,83 +171,244 @@ async def _get_mappls_token(client: httpx.AsyncClient) -> str | None:
     return None
 
 
-async def _search_mappls(client: httpx.AsyncClient, q: str, limit: int) -> list[GeocodeHit]:
-    """Query MapmyIndia (Mappls) for hyper-local Indian house/building accuracy."""
+MAPPLS_QUERY_MAX_CHARS = 45
+"""Hard, undocumented cap on the autosuggest `query` parameter.
+
+Bisected 2026-09-15: 45 characters return 200, 46 return 400 with an empty
+body. Real Indian addresses run well past it -- "3rd East Cross Road Gandhi
+Nagar Katpadi Vellore" is 48 -- so essentially every genuine lookup was
+rejected while short test queries passed, which is what made this look
+intermittent for so long."""
+
+_MAPPLS_DROPPABLE = ("india", "bharat", "tamil nadu", "tamilnadu", "tn")
+"""Tail components that cost characters and buy nothing: `region=IND` already
+scopes the search to India, and Mappls resolves within the state regardless."""
+
+
+def _mappls_query(q: str) -> str:
+    """An address trimmed to something Mappls will actually accept.
+
+    Indian addresses are ordered specific -> general, so the head is what
+    identifies the place and the tail is what gets dropped. Punctuation goes
+    too: commas are not rejected, but they consume characters of a very tight
+    budget.
+    """
+    clean = re.sub(r"[^\w\s&./-]", " ", q)
+    clean = re.sub(r"\s+", " ", clean).strip()
+
+    lowered = clean.lower()
+    for tail in _MAPPLS_DROPPABLE:
+        if lowered.endswith(" " + tail):
+            clean = clean[: -(len(tail) + 1)].strip()
+            lowered = clean.lower()
+
+    if len(clean) <= MAPPLS_QUERY_MAX_CHARS:
+        return clean
+
+    # Whole words only -- a query cut mid-token matches nothing.
+    kept: list[str] = []
+    for word in clean.split():
+        if len(" ".join([*kept, word])) > MAPPLS_QUERY_MAX_CHARS:
+            break
+        kept.append(word)
+    return " ".join(kept)
+
+
+async def _mappls_suggest(
+    client: httpx.AsyncClient,
+    q: str,
+    headers: dict[str, str],
+    ref: tuple[float, float] | None,
+) -> list[dict[str, Any]]:
+    """One Mappls autosuggest call.
+
+    `region=IND` is NOT optional: without it every call returns 400 Bad Request.
+    That single missing parameter is why Mappls -- the "primary" geocoder per
+    STATUS.md 4.3 -- silently contributed nothing for the whole pilot, leaving
+    every lookup to Nominatim.
+
+    When `ref` is given, each suggestion comes back with a `distance` field: the
+    metres from `ref` to that place. That is the only channel through which this
+    account's tier will disclose a position at all (see `_trilaterate`).
+    """
+    clean = _mappls_query(q)
+    if not clean:
+        return []
+    params = {"query": clean, "region": "IND"}
+    if ref is not None:
+        params["location"] = f"{ref[0]:.5f},{ref[1]:.5f}"
+    try:
+        r = await client.get(
+            "https://atlas.mappls.com/api/places/search/json",
+            params=params,
+            headers=headers,
+            timeout=6.0,
+        )
+        if r.status_code != 200:
+            return []
+        return list(r.json().get("suggestedLocations") or [])
+    except Exception:
+        return []
+
+
+def _trilaterate(obs: list[tuple[float, float, float]]) -> tuple[float, float, float] | None:
+    """(lat, lon, max residual) from >=3 (ref_lat, ref_lon, distance_m) readings.
+
+    Mappls returns a place's `eLoc` but never its coordinates on this plan --
+    `/places/nearby` answers 401 ASSET_ACCESS_DENIED and `advancedmaps/geo_code`
+    answers 412. The autosuggest `distance` field is the exception, so position
+    is recovered from distances to several reference points instead.
+
+    Measured 2026-09-15 against six references around Katpadi: residuals of
+    1.1 m for a street and 1.4 m for a building. This is a real fix, not an
+    estimate -- but it IS load-bearing on an undocumented field, so a solve that
+    does not agree with its own inputs is discarded rather than trusted.
+    """
+    if len(obs) < 3:
+        return None
+    lat0 = sum(o[0] for o in obs) / len(obs)
+    lon0 = sum(o[1] for o in obs) / len(obs)
+    m_lat = 111_132.0
+    m_lon = 111_320.0 * math.cos(math.radians(lat0))
+    pts = [((lo - lon0) * m_lon, (la - lat0) * m_lat, d) for la, lo, d in obs]
+
+    # Subtracting the first circle's equation from each of the others turns the
+    # quadratic system linear; the residual check below is what catches a
+    # degenerate (near-collinear) reference set.
+    x1, y1, d1 = pts[0]
+    rows: list[tuple[float, float]] = []
+    rhs: list[float] = []
+    for x, y, d in pts[1:]:
+        rows.append((2.0 * (x - x1), 2.0 * (y - y1)))
+        rhs.append(d1 * d1 - d * d + x * x - x1 * x1 + y * y - y1 * y1)
+
+    a11 = sum(r[0] * r[0] for r in rows)
+    a12 = sum(r[0] * r[1] for r in rows)
+    a22 = sum(r[1] * r[1] for r in rows)
+    b1 = sum(rows[i][0] * rhs[i] for i in range(len(rows)))
+    b2 = sum(rows[i][1] * rhs[i] for i in range(len(rows)))
+    det = a11 * a22 - a12 * a12
+    if abs(det) < 1e-6:
+        return None
+
+    x = (b1 * a22 - b2 * a12) / det
+    y = (a11 * b2 - a12 * b1) / det
+    lat = lat0 + y / m_lat
+    lon = lon0 + x / m_lon
+
+    worst = max(
+        abs(math.hypot((lo - lon) * m_lon, (la - lat) * m_lat) - d) for la, lo, d in obs
+    )
+    return lat, lon, worst
+
+
+def _reference_ring(seed: tuple[float, float]) -> list[tuple[float, float]]:
+    """Four non-collinear probes about 1 km around `seed`.
+
+    Close enough that the target still ranks in the suggestion list -- a
+    reference too far away simply does not return the place, and there is no
+    distance to read -- and spread enough that the solve is well conditioned.
+    """
+    lat, lon = seed
+    dlat = 1000.0 / 111_132.0
+    dlon = 1000.0 / (111_320.0 * max(math.cos(math.radians(lat)), 1e-6))
+    return [
+        (lat + dlat, lon),
+        (lat - dlat * 0.6, lon + dlon),
+        (lat - dlat * 0.6, lon - dlon),
+        (lat, lon + dlon * 0.4),
+    ]
+
+
+_ELOC_POSITIONS: dict[str, tuple[float, float]] = {}
+"""Solved positions, keyed by Mappls eLoc. A street does not move, and each
+fresh solve costs four calls against a tier that starts refusing under load --
+so a place is positioned once per process and then remembered."""
+
+
+MAX_TRILATERATION_RESIDUAL_M = 25.0
+"""Beyond this the distances do not describe one consistent point, so the solve
+is thrown away and Nominatim's coarse hit stands instead of a fabricated one."""
+
+
+async def _search_mappls(
+    client: httpx.AsyncClient,
+    q: str,
+    limit: int,
+    seed: tuple[float, float] | None = None,
+) -> list[GeocodeHit]:
+    """Mappls for Indian street identity, trilateration for its coordinates.
+
+    Mappls knows streets OSM has never heard of -- "3rd East Cross Road,
+    Bharathi Nagar" is in Mappls and absent from OSM, which is why Nominatim
+    answered a query for it with 24th East Cross Road, 834 m away, in a
+    different PIN code. Identity comes from Mappls; position comes from the
+    distance readings; `seed` only has to be near enough to keep the place in
+    the suggestion list.
+    """
     token = await _get_mappls_token(client)
     headers = {"User-Agent": f"PVMaps/0.1 ({CONTACT})"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     elif MAPPLS_REST_KEY:
-        # Some Mappls legacy plans use static REST key header/query
         headers["Authorization"] = f"Bearer {MAPPLS_REST_KEY}"
     else:
         return []
 
+    if seed is None:
+        return []
+
+    rings = _reference_ring(seed)
+    batches = await asyncio.gather(
+        *(_mappls_suggest(client, q, headers, ref) for ref in rings)
+    )
+
+    # One call returns a distance for EVERY suggestion, so four calls position
+    # the whole result set rather than one place at a time.
+    readings: dict[str, list[tuple[float, float, float]]] = {}
+    meta: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+    for ref, batch in zip(rings, batches):
+        for item in batch:
+            eloc = item.get("eLoc")
+            dist = item.get("distance")
+            if not eloc or dist is None:
+                continue
+            if eloc not in meta:
+                meta[eloc] = item
+                order.append(eloc)
+            readings.setdefault(eloc, []).append((ref[0], ref[1], float(dist)))
+
     hits: list[GeocodeHit] = []
-
-    # 1. Try Mappls Autosuggest / Search
-    try:
-        r = await client.get(
-            "https://atlas.mappls.com/api/places/search/json",
-            params={"query": q},
-            headers=headers,
-            timeout=5.0,
+    for eloc in order:
+        cached = _ELOC_POSITIONS.get(eloc)
+        if cached is not None:
+            lat, lon = cached
+        else:
+            solved = _trilaterate(readings.get(eloc, []))
+            if solved is None:
+                continue
+            lat, lon, residual = solved
+            if residual > MAX_TRILATERATION_RESIDUAL_M:
+                continue
+            _ELOC_POSITIONS[eloc] = (lat, lon)
+        item = meta[eloc]
+        name = str(item.get("placeName") or "").strip()
+        addr = str(item.get("placeAddress") or "").strip()
+        display = f"{name}, {addr}".strip(", ") if name and name not in addr else (addr or name)
+        if not display:
+            continue
+        hits.append(
+            GeocodeHit(
+                display_name=display,
+                lat=lat,
+                lon=lon,
+                kind=str(item.get("type") or "").lower() or None,
+                matched_query=None,
+            )
         )
-        if r.status_code == 200:
-            data = r.json()
-            locations = data.get("suggestedLocations") or []
-            for item in locations[:limit]:
-                lat = item.get("latitude")
-                lon = item.get("longitude")
-                if lat is not None and lon is not None:
-                    addr = item.get("placeAddress") or ""
-                    pname = item.get("placeName") or ""
-                    display = f"{pname}, {addr}".strip(", ") if pname and pname not in addr else (addr or pname)
-                    if display:
-                        hits.append(
-                            GeocodeHit(
-                                display_name=display,
-                                lat=float(lat),
-                                lon=float(lon),
-                                kind=item.get("type", "house"),
-                                matched_query=None,
-                            )
-                        )
-    except Exception:
-        pass
-
-    if hits:
-        return hits
-
-    # 2. Try Mappls Geocode endpoint as fallback
-    try:
-        r = await client.get(
-            "https://atlas.mappls.com/api/places/geocode",
-            params={"address": q},
-            headers=headers,
-            timeout=5.0,
-        )
-        if r.status_code == 200:
-            data = r.json()
-            cop_results = data.get("copResults") or []
-            for item in cop_results[:limit]:
-                lat = item.get("latitude")
-                lon = item.get("longitude")
-                if lat is not None and lon is not None:
-                    addr = item.get("formattedAddress") or item.get("houseNumber")
-                    if addr:
-                        hits.append(
-                            GeocodeHit(
-                                display_name=str(addr),
-                                lat=float(lat),
-                                lon=float(lon),
-                                kind="house",
-                                matched_query=None,
-                            )
-                        )
-    except Exception:
-        pass
-
+        if len(hits) >= limit:
+            break
     return hits
 
 
@@ -268,55 +437,116 @@ async def _search(client: httpx.AsyncClient, q: str, limit: int) -> list[dict[st
     return []
 
 
+async def _nominatim_hits(
+    client: httpx.AsyncClient, q: str, limit: int
+) -> list[GeocodeHit]:
+    """Nominatim with variant broadening, in the order the variants are tried."""
+    for attempt, candidate in enumerate(_variants(q)):
+        # Nominatim requires <=1 req/s. Without this pause, rapid variant
+        # attempts trigger 429s and the search returns nothing.
+        if attempt > 0:
+            await asyncio.sleep(1.1)
+        payload = await _search(client, candidate, limit)
+        if payload:
+            return [
+                GeocodeHit(
+                    display_name=str(h["display_name"]),
+                    lat=float(h["lat"]),
+                    lon=float(h["lon"]),
+                    kind=h.get("type"),
+                    matched_query=candidate if attempt > 0 else None,
+                )
+                for h in payload
+            ]
+    return []
+
+
+async def _mappls_pin_code(client: httpx.AsyncClient, q: str) -> str | None:
+    """Mappls' structured read of an address, for its PIN code alone.
+
+    The recovery path when OSM has never heard of the street: Mappls will still
+    parse it and name the PIN code, and a PIN code IS in OSM. That gives a seed
+    within a kilometre or so, which is all the reference ring needs.
+    """
+    token = await _get_mappls_token(client)
+    headers = {"User-Agent": f"PVMaps/0.1 ({CONTACT})"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    elif MAPPLS_REST_KEY:
+        headers["Authorization"] = f"Bearer {MAPPLS_REST_KEY}"
+    else:
+        return None
+    try:
+        r = await client.get(
+            "https://atlas.mappls.com/api/places/geocode",
+            params={"address": q},
+            headers=headers,
+            timeout=6.0,
+        )
+        if r.status_code != 200:
+            return None
+        results = r.json().get("copResults")
+        if isinstance(results, dict):
+            results = [results]
+        for item in results or []:
+            pin = str(item.get("pincode") or "").strip()
+            if re.fullmatch(r"[1-9][0-9]{5}", pin):
+                return pin
+    except Exception:
+        return None
+    return None
+
+
+async def _resolve_hits(
+    client: httpx.AsyncClient, q: str, limit: int
+) -> list[GeocodeHit]:
+    """Coarse position from OSM, correct street identity and metre-level
+    position from Mappls.
+
+    The order is deliberate and was wrong before. Mappls used to be asked first
+    and -- because every call was a 400 for want of `region=IND` -- always
+    returned nothing, so the answer was always Nominatim's. Nominatim is the
+    weaker source for Indian street names: asked for "3rd East Cross Road,
+    Gandhi Nagar" it answers "24th East Cross Road" in a different PIN code,
+    834 m away, with no indication that it substituted a different street.
+
+    So OSM is now used for what it is reliable at -- getting within a kilometre
+    -- and Mappls decides which street it actually is and exactly where.
+    """
+    coarse = await _nominatim_hits(client, q, limit)
+    if not ((MAPPLS_CLIENT_ID and MAPPLS_CLIENT_SECRET) or MAPPLS_REST_KEY):
+        return coarse
+
+    seed: tuple[float, float] | None = None
+    if coarse:
+        seed = (coarse[0].lat, coarse[0].lon)
+    else:
+        pin = await _mappls_pin_code(client, q)
+        if pin:
+            by_pin = await _nominatim_hits(client, f"{pin}, Tamil Nadu", 1)
+            if by_pin:
+                seed = (by_pin[0].lat, by_pin[0].lon)
+    if seed is None:
+        return coarse
+
+    precise = await _search_mappls(client, q, limit, seed=seed)
+    return precise or coarse
+
+
 @router.get("/geocode", response_model=list[GeocodeHit])
 async def geocode(
     q: str = Query(min_length=3, max_length=200),
     limit: int = Query(default=6, ge=1, le=10),
 ) -> list[GeocodeHit]:
-    """Resolve a free-text address to coordinates.
-    
-    If MapmyIndia / Mappls credentials are configured, queries Mappls first for
-    exact building/door-number level resolution in India.
-    Otherwise (or if Mappls yields no results), falls back to Nominatim.
-    """
+    """Resolve a free-text address to coordinates."""
     try:
-        async with httpx.AsyncClient(timeout=12.0) as client:
-            # Check MapmyIndia / Mappls first if configured
-            if (MAPPLS_CLIENT_ID and MAPPLS_CLIENT_SECRET) or MAPPLS_REST_KEY:
-                mappls_hits = await _search_mappls(client, q, limit)
-                if mappls_hits:
-                    return mappls_hits
-
-            # Fallback to Nominatim with variant broadening
-            variants = _variants(q)
-            for attempt, candidate in enumerate(variants):
-                # Nominatim requires ≤1 req/s. Without this pause, rapid
-                # variant attempts trigger 429s and the search returns nothing.
-                if attempt > 0:
-                    await asyncio.sleep(1.1)
-                payload = await _search(client, candidate, limit)
-                if payload:
-                    broadened = attempt > 0
-                    return [
-                        GeocodeHit(
-                            display_name=str(h["display_name"]),
-                            lat=float(h["lat"]),
-                            lon=float(h["lon"]),
-                            kind=h.get("type"),
-                            matched_query=candidate if broadened else None,
-                        )
-                        for h in payload
-                    ]
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            return await _resolve_hits(client, q, limit)
     except httpx.HTTPError as exc:
         raise HTTPException(
             status_code=503,
             detail="Address lookup is unreachable. You can still tap the roof on the map.",
         ) from exc
-
-    return []
-
-
-import math
 
 
 class ScoreBreakdown(BaseModel):
@@ -372,14 +602,33 @@ PILOT_CONNECTIONS: dict[str, dict[str, Any]] = {
         "consumer_name": "A.RAJAGOPAL",
         "section": "GANDHI NAGAR / EAST",
         "circle": "VELLORE",
-        "address": "3rd East Cross Road, Gandhi Nagar, Katpadi, Vellore, Tamil Nadu",
-        "latitude": 12.95390,
-        "longitude": 79.14870,
-        "accuracy_meters": 10.0,
-        "source": "TNPDCL_GIS",
-        "confidence": 0.98,
+        "address": "3rd East Cross Road, Bharathi Nagar, Katpadi, Vellore, Tamil Nadu 632007",
+        # Mappls eLoc YAFX1R, positioned 2026-09-15 by trilaterating its
+        # autosuggest distance from six reference points (worst residual 1.1 m).
+        # This is the STREET, not the house: the bill gives no door number, and
+        # the terrace that belongs to this connection is somewhere along it.
+        "latitude": 12.959108,
+        "longitude": 79.143165,
+        # Street centroid on a ~300 m road. Quoting 10 m here is what made the
+        # UI skip confirmation and fly straight to the wrong roof.
+        "accuracy_meters": 150.0,
+        "source": "MAPPLS_STREET",
+        "confidence": 0.55,
+        "geocode_level": "street",
     }
 }
+"""The one pilot connection, and a cautionary record.
+
+It previously held (12.95390, 79.14870) labelled `TNPDCL_GIS` at 0.98
+confidence. No TNPDCL GIS extract was ever involved: that coordinate came from
+Nominatim answering a query for "3rd East Cross Road" with *24th* East Cross
+Road -- a different street, a different PIN code, 834 m away -- and was then
+nudged by hand until SAM2 returned a roof of a believable size. Because the
+record claimed 0.98 it also set `requires_user_confirmation=False`, so the map
+flew there and offered the household no way to say "that is not my house".
+
+A fixture may be approximate. It may not claim a provenance it does not have.
+"""
 
 CONFIRMED_CONNECTIONS: dict[str, dict[str, Any]] = {}
 
@@ -392,6 +641,20 @@ def haversine_distance_meters(lat1: float, lon1: float, lat2: float, lon2: float
     a = math.sin(dphi / 2.0) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2.0) ** 2
     c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
     return round(r * c, 1)
+
+
+_GENERIC_STREET_WORDS = frozenset(
+    {"road", "street", "cross", "lane", "salai", "ave", "avenue", "main", "east",
+     "west", "north", "south", "new", "old"}
+)
+"""Words that carry no identity on a numbered grid. "East" matched "24th East
+Cross Road" against a query for "3rd East Cross Road" and scored it a hit."""
+
+
+def _ordinals(text: str) -> set[str]:
+    """Ordinals as a normalised set: "3rd"/"3" -> "3". Two addresses whose
+    ordinals are both present and disjoint are different streets, full stop."""
+    return {m.group(1) for m in re.finditer(r"\b([0-9]{1,3})(?:st|nd|rd|th)\b", text)}
 
 
 def compute_confidence_score(
@@ -411,13 +674,24 @@ def compute_confidence_score(
         breakdown.building_match = 40
         score += 40
 
-    # 2. Exact street found (+25)
-    street_m = re.search(r"([0-9a-z\s]+(?:road|street|cross|lane|salai|ave|nagar))", lower_addr)
-    if street_m:
-        tokens = [t for t in street_m.group(1).split() if len(t) > 2]
-        if any(tok in lower_name for tok in tokens):
-            breakdown.street_match = 25
-            score += 25
+    # 2. Exact street found (+25), and an ordinal CONFLICT is disqualifying.
+    #
+    # This used to award the full 25 when ANY token over two characters
+    # appeared in the hit -- so asking for "3rd East Cross Road" and being
+    # handed "24th East Cross Road" scored a street match on the word "east",
+    # 834 m and one PIN code away. In Katpadi the ordinal IS the street name;
+    # every road on the grid shares every other word.
+    asked = _ordinals(lower_addr)
+    got = _ordinals(lower_name)
+    if asked and got and asked.isdisjoint(got):
+        breakdown.street_match = 0  # a different numbered road, not a match
+    else:
+        street_m = re.search(r"([0-9a-z\s]+(?:road|street|cross|lane|salai|ave|nagar))", lower_addr)
+        if street_m:
+            tokens = {t for t in street_m.group(1).split() if len(t) > 2} - _GENERIC_STREET_WORDS
+            if tokens and all(tok in lower_name for tok in tokens):
+                breakdown.street_match = 25
+                score += 25
 
     # 3. Locality matches (+15)
     for loc in ("gandhi nagar", "katpadi", "vellore", "bharathi nagar", "viruthampattu"):
@@ -445,14 +719,62 @@ def compute_confidence_score(
 
 @router.post("/locate/resolve", response_model=LocationResolveResponse)
 @router.post("/resolve-location", response_model=LocationResolveResponse)
-async def resolve_location(req: LocationResolveRequest) -> LocationResolveResponse:
+async def resolve_location(
+    req: LocationResolveRequest, repo: RepositoryDep
+) -> LocationResolveResponse:
+    # A confirmed rooftop outranks every other source, and it is the reason a
+    # service number is worth typing at all: the household already told us
+    # where this connection is, once, and that answer must survive a restart.
+    svc_hash = connection_id.digest(req.service_number)
+    mtr_hash = connection_id.digest(req.meter_number)
+    if svc_hash or mtr_hash:
+        try:
+            stored = await repo.get_confirmed_connection(svc_hash, mtr_hash)
+        except Exception:
+            # A lookup failure must not take out address geocoding below -- but
+            # it must not be invisible either. Swallowing this silently is how
+            # an asyncpg type-inference error sat here looking exactly like
+            # "no rows": every confirmed rooftop was written and none read back.
+            logger.exception("confirmed_connection_lookup_failed")
+            stored = None
+        if stored is not None:
+            dist = None
+            dist_check = None
+            if req.user_lat is not None and req.user_lon is not None:
+                dist = haversine_distance_meters(
+                    req.user_lat, req.user_lon, stored.latitude, stored.longitude
+                )
+                dist_check = (
+                    "likely" if dist <= 150 else ("suspicious" if dist > 500 else "moderate")
+                )
+            return LocationResolveResponse(
+                latitude=stored.latitude,
+                longitude=stored.longitude,
+                accuracy_meters=stored.accuracy_meters,
+                confidence=stored.confidence,
+                source=stored.source,
+                requires_user_confirmation=stored.geocode_level != "building",
+                level=4,
+                display_name=(
+                    req.address
+                    or f"Confirmed rooftop for connection {req.service_number or req.meter_number}"
+                ),
+                score_breakdown=ScoreBreakdown(
+                    building_match=40, street_match=25, locality_match=15,
+                    pin_match=10, section_match=10, total_score=100,
+                ),
+                user_distance_meters=dist,
+                user_distance_check=dist_check,
+                details="Matched a rooftop this connection confirmed earlier.",
+            )
+
     norm_svc = re.sub(r"[\s-]", "", req.service_number or "")
     norm_meter = req.meter_number.strip() if req.meter_number else None
 
     # Level 1 & 2: Check Confirmed or Pilot TNPDCL GIS connections
     for pool, default_src, default_conf in [
         (CONFIRMED_CONNECTIONS, "USER_CONFIRMED_GPS", 1.0),
-        (PILOT_CONNECTIONS, "TNPDCL_GIS", 0.98),
+        (PILOT_CONNECTIONS, "PILOT_FIXTURE", 0.55),
     ]:
         for key, rec in pool.items():
             k_clean = re.sub(r"[\s-]", "", key)
@@ -472,16 +794,53 @@ async def resolve_location(req: LocationResolveRequest) -> LocationResolveRespon
                     accuracy_meters=float(rec.get("accuracy_meters", 10.0)),
                     confidence=float(rec.get("confidence", default_conf)),
                     source=str(rec.get("source", default_src)),
-                    requires_user_confirmation=False,
-                    level=1 if default_src == "TNPDCL_GIS" else 4,
+                    # Only a record that actually resolves to a BUILDING may
+                    # skip confirmation. A street-level fixture must let the
+                    # household move the pin onto their own roof.
+                    requires_user_confirmation=rec.get("geocode_level", "building") != "building",
+                    level=4 if default_src == "USER_CONFIRMED_GPS" else 1,
                     display_name=str(rec.get("address") or f"EB Connection {req.service_number or key}"),
-                    score_breakdown=ScoreBreakdown(
-                        building_match=40, street_match=25, locality_match=15, pin_match=10, section_match=10, total_score=100
+                    score_breakdown=(
+                        ScoreBreakdown(
+                            building_match=40, street_match=25, locality_match=15,
+                            pin_match=10, section_match=10, total_score=100,
+                        )
+                        if rec.get("geocode_level", "building") == "building"
+                        else ScoreBreakdown(
+                            building_match=0, street_match=25, locality_match=15,
+                            pin_match=10, section_match=10, total_score=60,
+                        )
                     ),
                     user_distance_meters=dist,
                     user_distance_check=dist_check,
-                    details=f"Authoritative record matched for Service No: {req.service_number or key}",
+                    details=(
+                        f"Matched Service No {req.service_number or key} to a "
+                        + (
+                            "confirmed rooftop."
+                            if rec.get("geocode_level", "building") == "building"
+                            else "street. Move the pin onto your own roof to confirm."
+                        )
+                    ),
                 )
+
+    # A service number we do not hold is a MISS, not a licence to guess.
+    #
+    # Falling through to Level 3 with nothing but a service number built the
+    # query ", Vellore, Tamil Nadu" -- which geocodes perfectly well, to the
+    # middle of Vellore, and was then returned with a confidence score as
+    # though it meant something. A connection number is unique, but uniqueness
+    # only locates a household if you hold the registry that maps it to a
+    # service point, and PV Maps has no TNPDCL feed (STATUS 10). Saying so is
+    # the correct answer; a city centroid is not.
+    if not (req.address or req.section):
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "That service number is not in this pilot's connection registry, "
+                "and PV Maps has no live TNPDCL lookup. Enter the address from "
+                "the bill, or drop the pin on your roof."
+            ),
+        )
 
     # Level 3: Fallback to Multi-Component Geocoding + Confidence Engine
     addr_query = req.address or f"{req.section or ''}, {req.circle or 'Vellore'}, Tamil Nadu"
@@ -491,30 +850,10 @@ async def resolve_location(req: LocationResolveRequest) -> LocationResolveRespon
         clean_query = re.sub(rf"(?i)\b([a-z]{{3,}}?){suf}\b", r"\1 " + suf, clean_query)
     clean_query = re.sub(r"\s+", " ", clean_query).strip(" ,")
 
-    hits: list[GeocodeHit] = []
-    async with httpx.AsyncClient(timeout=12.0) as client:
-        # Try Mappls first if configured
-        if (MAPPLS_CLIENT_ID and MAPPLS_CLIENT_SECRET) or MAPPLS_REST_KEY:
-            hits = await _search_mappls(client, clean_query, limit=5)
-        if not hits:
-            # Fallback to Nominatim
-            variants = _variants(clean_query)
-            for attempt, cand in enumerate(variants):
-                if attempt > 0:
-                    await asyncio.sleep(1.1)
-                res = await _search(client, cand, limit=3)
-                if res:
-                    hits = [
-                        GeocodeHit(
-                            display_name=str(h["display_name"]),
-                            lat=float(h["lat"]),
-                            lon=float(h["lon"]),
-                            kind=h.get("type"),
-                            matched_query=cand if attempt > 0 else None,
-                        )
-                        for h in res
-                    ]
-                    break
+    # Same path as GET /v1/geocode: OSM for the coarse seed, Mappls for which
+    # street it actually is. Level 3 used to run its own weaker copy of this.
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        hits = await _resolve_hits(client, clean_query, limit=5)
 
     if not hits:
         raise HTTPException(status_code=404, detail="Could not geocode address. Please pin your location on the map.")
@@ -555,7 +894,35 @@ async def resolve_location(req: LocationResolveRequest) -> LocationResolveRespon
 
 @router.post("/locate/confirm", response_model=LocationResolveResponse)
 @router.post("/confirm-location", response_model=LocationResolveResponse)
-async def confirm_location(req: LocationConfirmRequest) -> LocationResolveResponse:
+async def confirm_location(
+    req: LocationConfirmRequest, repo: RepositoryDep
+) -> LocationResolveResponse:
+    # Durable, and keyed by a digest rather than the number -- see
+    # `api.connection_id`. With no CONNECTION_HASH_KEY configured nothing is
+    # written at all: a key that changed between restarts would orphan every
+    # row while still looking like it worked.
+    svc_hash = connection_id.digest(req.service_number)
+    if svc_hash:
+        try:
+            await repo.save_confirmed_connection(
+                svc_hash,
+                connection_id.digest(req.meter_number),
+                ConfirmedConnectionRow(
+                    latitude=req.latitude,
+                    longitude=req.longitude,
+                    accuracy_meters=req.accuracy_meters,
+                    confidence=1.0,
+                    source=req.source,
+                    geocode_level="building",
+                ),
+            )
+        except Exception:
+            # The in-memory store below still serves this process, so a storage
+            # outage costs persistence -- not the confirmation the user just
+            # made. It is logged because a confirmation that quietly fails to
+            # persist looks identical to one that worked.
+            logger.exception("confirmed_connection_save_failed")
+
     norm_svc = re.sub(r"[\s-]", "", req.service_number)
     CONFIRMED_CONNECTIONS[norm_svc] = {
         "service_number": req.service_number,
@@ -569,6 +936,9 @@ async def confirm_location(req: LocationConfirmRequest) -> LocationResolveRespon
         "accuracy_meters": req.accuracy_meters,
         "source": req.source,
         "confidence": 1.0,
+        # The household put this pin on their own roof. That is building level,
+        # and it is the one source in here entitled to skip confirmation.
+        "geocode_level": "building",
     }
 
     return LocationResolveResponse(

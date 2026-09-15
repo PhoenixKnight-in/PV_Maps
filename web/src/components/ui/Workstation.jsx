@@ -67,6 +67,31 @@ export default function Workstation({
 }) {
   const wide = useIsWide();
 
+  // No canvas means no middle column -- NOT an empty one.
+  //
+  // The result screen only has a map when the roof came from a seeded pilot
+  // building. A roof measured live has no `building`, so `canvas` was null and
+  // the grid drew its blueprint placeholder: a featureless ruled rectangle
+  // holding open the widest column on the page while the actual findings were
+  // pushed into two narrow rails either side of it. The layout read as broken
+  // because it WAS broken -- three columns of chrome for two columns of
+  // content.
+  //
+  // With nothing to put on stage there is no stage. One readable column,
+  // rails in sequence, capped so a 1600px monitor does not stretch a line of
+  // text across its full width.
+  if (!canvas && !inlineCanvas) {
+    return (
+      <div className="relative">
+        <div className="mx-auto w-full max-w-5xl space-y-3 p-4">
+          {left}
+          {right}
+        </div>
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
       <div

@@ -66,14 +66,24 @@ class Candidate(BaseModel):
     best plausible candidate and offers the rest; nothing is discarded, because
     a roof genuinely outside the window should still be selectable by hand."""
 
+    layout: "PanelLayout | None" = None
+    """This candidate's own module array. Selecting a scale must change the
+    modules with it."""
+
 
 class PanelLayout(BaseModel):
-    """Where the modules actually go, for the chosen outline.
+    """Where the modules actually go, for ONE outline.
 
-    Computed only for the chosen candidate: packing all three scales would mean
-    three array layouts on screen, and the largest of them is usually a city
-    block. Re-requesting after the user picks a different outline is cheap --
-    the imagery is cached and SAM2 is not re-run.
+    Computed for EVERY candidate, not just the chosen one. The original reason
+    for doing otherwise -- that three arrays on screen at once would be
+    unreadable -- confused producing a layout with drawing it: the client draws
+    exactly one, the one whose outline is selected. Computing only the chosen
+    one meant tapping "386 m²" changed the area and the outline while leaving
+    the modules from the previous scale on the roof, which is the one thing on
+    this screen a household is asked to check.
+
+    Packing is pure geometry on a cached footprint -- no GPU, no imagery fetch
+    -- so the extra candidates cost milliseconds.
     """
 
     model_config = {"frozen": True}
@@ -91,6 +101,9 @@ class PanelLayout(BaseModel):
     panel_watts: int
     tilt_deg: float
     row_pitch_m: float
+
+
+Candidate.model_rebuild()
 
 
 class RoofResponse(BaseModel):
@@ -194,6 +207,7 @@ def segment(req: RoofRequest) -> RoofResponse:
             area_m2=round(area, 2),
             sam2_score=round(score, 4),
             plausible=MIN_ROOF_M2 <= area <= MAX_ROOF_M2,
+            layout=_layout_for(geom, req.lat),
         )
         for area, score, geom in found
     ]
@@ -206,9 +220,9 @@ def segment(req: RoofRequest) -> RoofResponse:
             "Pick one by hand or move the pin."
         )
 
-    layout = None
-    if chosen is not None:
-        layout = _layout_for(found[chosen][2], req.lat)
+    # Kept at the top level as well, matching the chosen candidate, so a client
+    # that has not been updated still draws a coherent array.
+    layout = candidates[chosen].layout if chosen is not None else None
 
     return RoofResponse(
         lat=req.lat,

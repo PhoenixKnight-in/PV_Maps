@@ -201,6 +201,53 @@ class SubsidyScheduleRow(Base):
     __table_args__ = (UniqueConstraint("category", "version", name="uq_subsidy_version"),)
 
 
+class ConfirmedConnection(Base):
+    """A service connection whose rooftop a household has confirmed.
+
+    This table exists so that "locate by service number" survives a restart.
+    It is deliberately shaped to hold as little as possible about a person.
+
+    WHY THE NUMBER IS NOT STORED. ARCHITECTURE.md 8 says "do not log consumer
+    numbers, names, addresses". A row of (service number -> rooftop) is a record
+    of which household lives at which roof, which is precisely what that line
+    exists to prevent. So the lookup key is an HMAC of the number under a
+    server-side key, never the number itself: a lookup hashes its input and
+    matches, and the table cannot be read back into a list of connections.
+
+    Plain SHA-256 would not be enough. A TNEB service number is short and
+    heavily structured -- region, section and distribution codes come from small
+    sets -- so an unsalted digest of every possible number is cheap to
+    precompute. The HMAC key is what makes the digest useless without the
+    server.
+
+    There is no consumer_name, no address and no section column here, and as on
+    `sizing_runs`, no column to add one to.
+    """
+
+    __tablename__ = "confirmed_connections"
+
+    service_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    """HMAC-SHA256 of the normalised service number, hex. Not reversible."""
+
+    meter_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    """Same construction for the meter number, so either identifier resolves."""
+
+    geom = mapped_column(Geometry("POINT", srid=WGS84), nullable=False)
+    """The confirmed service point. A coordinate IS personal data, which is why
+    it is reachable only by someone who already knows the connection number."""
+
+    accuracy_meters: Mapped[float] = mapped_column(Float, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    geocode_level: Mapped[str] = mapped_column(String(16), nullable=False)
+    confirmed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("confidence >= 0 AND confidence <= 1", name="ck_conn_confidence_unit"),
+        CheckConstraint("accuracy_meters > 0", name="ck_conn_accuracy_positive"),
+    )
+
+
 class SizingRun(Base):
     """One recommendation, as returned to one browser.
 

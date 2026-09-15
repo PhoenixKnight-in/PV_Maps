@@ -31,6 +31,7 @@ from pvmaps.addressing import normalize_address
 __all__ = [
     "AddressRow",
     "BuildingRow",
+    "ConfirmedConnectionRow",
     "PostgresRepository",
     "Repository",
     "SizingRunRecord",
@@ -98,6 +99,22 @@ class SizingRunRecord:
     expires_at: datetime | None
 
 
+@dataclass(frozen=True, slots=True)
+class ConfirmedConnectionRow:
+    """A rooftop a household confirmed, found by a digest of their number.
+
+    Carries no number, name or address -- see `db.models.ConfirmedConnection`
+    for why the identifier never reaches the database in readable form.
+    """
+
+    latitude: float
+    longitude: float
+    accuracy_meters: float
+    confidence: float
+    source: str
+    geocode_level: str
+
+
 class Repository(Protocol):
     async def ping(self) -> bool: ...
 
@@ -106,6 +123,14 @@ class Repository(Protocol):
     async def get_building(self, building_id: str) -> BuildingRow | None: ...
 
     async def save_sizing_run(self, run: SizingRunRecord) -> None: ...
+
+    async def get_confirmed_connection(
+        self, service_hash: str | None, meter_hash: str | None
+    ) -> ConfirmedConnectionRow | None: ...
+
+    async def save_confirmed_connection(
+        self, service_hash: str, meter_hash: str | None, row: ConfirmedConnectionRow
+    ) -> None: ...
 
 
 # ---------------------------------------------------------------------------
@@ -206,6 +231,40 @@ _INSERT_RUN_SQL = text(
 )
 
 
+_GET_CONNECTION_SQL = text(
+    """
+    SELECT ST_Y(geom::geometry) AS latitude,
+           ST_X(geom::geometry) AS longitude,
+           accuracy_meters, confidence, source, geocode_level
+      FROM confirmed_connections
+     WHERE (CAST(:service_hash AS text) IS NOT NULL
+            AND service_hash = CAST(:service_hash AS text))
+        OR (CAST(:meter_hash AS text) IS NOT NULL
+            AND meter_hash = CAST(:meter_hash AS text))
+     LIMIT 1
+    """
+)
+
+_UPSERT_CONNECTION_SQL = text(
+    """
+    INSERT INTO confirmed_connections
+        (service_hash, meter_hash, geom, accuracy_meters, confidence,
+         source, geocode_level, confirmed_at)
+    VALUES
+        (:service_hash, :meter_hash,
+         ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),
+         :accuracy_meters, :confidence, :source, :geocode_level, NOW())
+    ON CONFLICT (service_hash) DO UPDATE SET
+        meter_hash      = EXCLUDED.meter_hash,
+        geom            = EXCLUDED.geom,
+        accuracy_meters = EXCLUDED.accuracy_meters,
+        confidence      = EXCLUDED.confidence,
+        source          = EXCLUDED.source,
+        geocode_level   = EXCLUDED.geocode_level,
+        confirmed_at    = EXCLUDED.confirmed_at
+    """
+)
+
 class PostgresRepository:
     """Reads precomputed rows. Holds a session, not an engine."""
 
@@ -295,6 +354,45 @@ class PostgresRepository:
                 ),
                 "curve_json": json.dumps(run.curve_json),
                 "expires_at": run.expires_at,
+            },
+        )
+        await self._session.commit()
+
+    async def get_confirmed_connection(
+        self, service_hash: str | None, meter_hash: str | None
+    ) -> ConfirmedConnectionRow | None:
+        if not service_hash and not meter_hash:
+            return None
+        result = await self._session.execute(
+            _GET_CONNECTION_SQL,
+            {"service_hash": service_hash, "meter_hash": meter_hash},
+        )
+        row = result.mappings().first()
+        if row is None:
+            return None
+        return ConfirmedConnectionRow(
+            latitude=float(row["latitude"]),
+            longitude=float(row["longitude"]),
+            accuracy_meters=float(row["accuracy_meters"]),
+            confidence=float(row["confidence"]),
+            source=str(row["source"]),
+            geocode_level=str(row["geocode_level"]),
+        )
+
+    async def save_confirmed_connection(
+        self, service_hash: str, meter_hash: str | None, row: ConfirmedConnectionRow
+    ) -> None:
+        await self._session.execute(
+            _UPSERT_CONNECTION_SQL,
+            {
+                "service_hash": service_hash,
+                "meter_hash": meter_hash,
+                "latitude": row.latitude,
+                "longitude": row.longitude,
+                "accuracy_meters": row.accuracy_meters,
+                "confidence": row.confidence,
+                "source": row.source,
+                "geocode_level": row.geocode_level,
             },
         )
         await self._session.commit()
